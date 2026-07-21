@@ -7,11 +7,9 @@
 [![Java](https://img.shields.io/badge/Java-21-ED8B00.svg)](https://www.oracle.com/java/)
 [![R](https://img.shields.io/badge/R-4.3%2B-276DC3.svg)](https://www.r-project.org/)
 
-Augury is a quantitative pipeline designed to test whether social media sentiment leads or lags real-world prediction markets. It continuously streams and filters live posts from X (Twitter), processes the raw text into time-decayed stance probabilities, and maps those social signals against live order-book shifts from Polymarket and Kalshi to evaluate information efficiency.
+*Augury* is a quantitative pipeline designed to test whether social media sentiment leads or lags real-world prediction markets. It continuously streams and filters live posts from X (Twitter), processes the raw text into time-decayed stance probabilities, and maps those social signals against live order-book shifts from Polymarket and Kalshi to evaluate information efficiency.
 
-Beyond simple observation, the system operates in two distinct modes. The statistical core evaluates Granger causality to see if social momentum actually predicts market movement, while a high-performance synthetic market engine uses Hanson’s Logarithmic Market Scoring Rule (LMSR) to simulate automated market maker (AMM) behavior based on those same NLP signals. The entire system is orchestrated across a distributed, polyglot architecture utilizing Rust, Python, C++, Java, and R to handle data ingestion, modeling, simulation, and serving at scale.
-
-**Augury** is a distributed, multi-language quantitative sentiment and prediction engine. It continuously ingests social media signals from X (Twitter), transforms raw text into time-decayed stance probability vectors, and correlates social volume/sentiment against live market pricing on **Polymarket** and **Kalshi**.
+Beyond simple observation, the system operates in two distinct modes. The statistical core evaluates Granger causality to see if social momentum actually predicts market movement, while a high-performance synthetic market engine uses Hanson's Logarithmic Market Scoring Rule (LMSR) to simulate automated market maker (AMM) behavior based on those same NLP signals. The entire system is orchestrated across a distributed, polyglot architecture utilizing Rust, Python, C++, Java, and R to handle data ingestion, modeling, simulation, and serving at scale.
 
 The engine operates in two modes:
 
@@ -26,6 +24,7 @@ The engine operates in two modes:
 - [High-Value Enhancements Included](#high-value-enhancements-included)
 - [Repository Structure](#repository-structure)
 - [Getting Started](#getting-started)
+- [Testing](#testing)
 - [Roadmap & Implementation Phases](#roadmap--implementation-phases)
 - [Potential Extensions](#potential-extensions)
 - [Disclaimer](#disclaimer)
@@ -73,6 +72,7 @@ flowchart TB
     PYSIG -->|"price series"| DB
     DB -->|"post history"| NLP
     DB -->|"price history"| CPP
+    NLP -->|"stance signal S(t)"| CPP
     NLP -->|"stance signal S(t)"| JAVA
     CPP -->|"simulated price path"| JAVA
     NLP -.->|"signal series"| RLANG
@@ -113,7 +113,7 @@ flowchart TB
 | **Python** | `augury-signal` | Kalshi/Polymarket polling, targeted DeBERTa-v3 stance classification, Dagster pipeline orchestration. | `transformers`, `torch`, `dagster`, `polars` |
 | **C++20** | `augury-engine` | High-performance LMSR market maker, backtesting vectorization, synthetic order matching. | `CMake`, `Eigen`, `Catch2`, `fmt` |
 | **Java** | `augury-api` | Enterprise API gateway, live paper-trading portfolio state, streaming WebSockets. | `Spring Boot 3`, `Project Reactor`, `Lombok` |
-| **R** | `augury-analytics` | Econometric validation, lead-lag cross-correlations, Brier score calibration, Quarto reports. | `tidyverse`, `tseries`, `ggplot2`, `quarto` |
+| **R** | `augury-analytics` | Econometric validation, lead-lag cross-correlations, Brier score calibration, Quarto reports. | `tidyverse`, `tseries`, `ggplot2`, `quarto`, `testthat` |
 
 ---
 
@@ -137,11 +137,15 @@ $$P_t = \alpha_0 + \sum_{j=1}^p \alpha_j P_{t-j} + \sum_{j=1}^p \beta_j S_{t-j} 
 
 We test the null hypothesis $H_0: \beta_1 = \beta_2 = \dots = \beta_p = 0$. Rejection ($p < 0.05$) indicates that social stance contains Granger-predictive information for future market price movements.
 
+Two things matter before this VAR is trustworthy. First, $P_t$ and $S_t$ are both bounded in $[0,1]$, so raw levels are rarely stationary near the boundaries — transform both to logit space, $\tilde{x}_t = \ln\!\big(x_t / (1-x_t)\big)$, and confirm stationarity (e.g. an ADF test) before fitting; pick $p$ by AIC/BIC rather than a fixed value. Second, if this VAR is run once per tracked market, testing dozens of markets at $p < 0.05$ will produce false "sentiment leads price" findings by chance alone — apply a multiple-comparisons correction (Benjamini–Hochberg FDR) across the batch before reporting which markets show a real effect.
+
 ### 3. LMSR Automated Market Maker (C++ Engine)
 
 For synthetic market simulation, price $p_k$ for outcome $k$ with outcome vector $\mathbf{q}$ is computed via Hanson's Logarithmic Market Scoring Rule with liquidity parameter $b$:
 
 $$C(\mathbf{q}) = b \cdot \ln \left( \sum_{j=1}^K e^{q_j / b} \right), \quad p_k(\mathbf{q}) = \frac{e^{q_k / b}}{\sum_{j=1}^K e^{q_j / b}}$$
+
+$b$ controls both the market's worst-case subsidy and how much a single trade moves the price — pick it arbitrarily and the synthetic market either barely reacts to the signal or whipsaws on every post. Since order book depth and spread are already being pulled per enhancement 4 below, calibrate $b$ from the real market's observed depth at each snapshot rather than a fixed constant, so the synthetic market's sensitivity roughly matches the liquidity of the real one it's being compared against.
 
 ### 4. Forecast Calibration (Brier Score)
 
@@ -149,16 +153,23 @@ When market $M$ resolves at time $T$ to outcome $O \in \{0, 1\}$, forecast accur
 
 $$BS = \frac{1}{N} \sum_{t=1}^N (S(t) - O)^2$$
 
+Reported alone, $BS$ doesn't say whether the social signal is *useful* — a low score can just mean the underlying event was never in doubt. Score it as a **Brier Skill Score** against the market's own price as the reference forecast:
+
+$$BSS = 1 - \frac{BS_{\text{signal}}}{BS_{\text{market}}}$$
+
+$BSS > 0$ means the X-derived signal is more calibrated than the market price itself at the same point in time — that's the actual claim this project is trying to support or refute. $BSS \leq 0$ is a legitimate and useful result too; it means the market is already efficient with respect to this signal.
+
 ---
 
 ## High-Value Enhancements Included
 
-To move beyond baseline sentiment analysis, Augury includes four architectural enhancements:
+To move beyond baseline sentiment analysis, Augury includes five architectural enhancements:
 
 1. **Entity-Targeted Stance over Naive Sentiment** — standard sentiment models fail on domain phrasing (e.g., "Candidate X drops out" is negative text sentiment, but bullish for "Will Candidate Y win?"). Augury uses DeBERTa fine-tuned for target-conditioned stance detection.
 2. **Heuristic Bot & Spam Filtration (Rust Ingestion)** — applies streaming MinHash near-duplicate detection and account age/engagement checks in Rust before writing to storage, preventing spam rings from distorting social signals.
 3. **Adaptive Decay Half-Lives** — dynamically accelerates signal decay ($\lambda$) during high-volatility event windows (e.g., debate hours or election nights) to prioritize immediate real-time posts over stale historical data.
 4. **Order Book Depth & Spread Integration** — pulls bid-ask spreads and liquidity depth from public Polymarket/Kalshi unauthenticated REST endpoints to detect when high social momentum collides with thin order books (high signal-to-impact potential).
+5. **Market-to-Query Mapping (Ingestion Config)** — each tracked market maps to a curated set of keywords, tickers, and named entities (plus common aliases and misspellings) rather than ingesting an unfiltered firehose; this keeps `augury-ingest` scoped to relevant volume and gives the stance model a fixed target per post instead of having to infer which market a post is even about.
 
 ---
 
@@ -172,6 +183,7 @@ augury/
 │   ├── augury-engine/       # [C++] LMSR market maker & backtesting engine
 │   ├── augury-api/          # [Java] Spring Boot REST & WebSocket service
 │   └── augury-analytics/    # [R] Granger causality & calibration reports
+├── schemas/                 # Shared JSON Schema for cross-service message contracts
 ├── docker/                  # Docker Compose, TimescaleDB, & Redis configs
 ├── docs/                    # Architecture diagrams & API specification
 ├── Makefile                 # Master polyglot build workflow
@@ -217,6 +229,8 @@ export X_API_BEARER_TOKEN="your_token_here"
 cd apps/augury-ingest
 cargo run --release
 ```
+
+> X's API is pay-per-use as of 2026 — every post read has a real cost, unlike the Kalshi/Polymarket side, which is free. `augury-ingest` should enforce a configurable daily read budget (`MAX_DAILY_READS` in `.env.example`) rather than pulling unbounded volume.
 
 **Phase 2 — Python Signal & Pipeline (Dagster)**
 
@@ -265,6 +279,18 @@ Rscript -e "quarto::quarto_render('reports/lead_lag_analysis.qmd')"
 
 ---
 
+## Testing
+
+Each service owns its own tests — there's no cross-language integration suite yet (a natural next addition once the pipeline is stable):
+
+- **Rust**: `cargo test` inside `apps/augury-ingest`
+- **Python**: `pytest` inside `apps/augury-signal`
+- **C++**: `ctest` (Catch2) inside `apps/augury-engine/build` — separate from the `engine_benchmarks` performance suite above
+- **Java**: `./mvnw test` inside `apps/augury-api`
+- **R**: `testthat::test_dir("tests/")` inside `apps/augury-analytics`
+
+---
+
 ## Roadmap & Implementation Phases
 
 - Phase 0: Architectural specification and repo setup.
@@ -274,6 +300,7 @@ Rscript -e "quarto::quarto_render('reports/lead_lag_analysis.qmd')"
 - Phase 4: R econometric reporting module (Granger causality, cross-correlations).
 - Phase 5: C++ Hanson LMSR synthetic market maker and backtesting engine.
 - Phase 6: Java Spring Boot backend API with WebSocket live-streaming updates.
+- Phase 7: Market resolution watcher — detects when a tracked market closes, freezes final Brier/BSS scores, and settles any open paper-trading positions in the ledger.
 
 ---
 
