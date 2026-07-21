@@ -267,13 +267,13 @@ Rscript -e "quarto::quarto_render('reports/lead_lag_analysis.qmd')"
 
 ## Roadmap & Implementation Phases
 
-- [x] Phase 0: Architectural specification and repo setup.
-- [ ] Phase 1: Python prototype (end-to-end, single-file exploratory notebook on Kalshi + X).
-- [ ] Phase 2: Rust async streaming ingestion service with Postgres/TimescaleDB sink.
-- [ ] Phase 3: DeBERTa-v3 target-specific stance pipeline with Dagster orchestration.
-- [ ] Phase 4: R econometric reporting module (Granger causality, cross-correlations).
-- [ ] Phase 5: C++ Hanson LMSR synthetic market maker and backtesting engine.
-- [ ] Phase 6: Java Spring Boot backend API with WebSocket live-streaming updates.
+- Phase 0: Architectural specification and repo setup.
+- Phase 1: Python prototype (end-to-end, single-file exploratory notebook on Kalshi + X).
+- Phase 2: Rust async streaming ingestion service with Postgres/TimescaleDB sink.
+- Phase 3: DeBERTa-v3 target-specific stance pipeline with Dagster orchestration.
+- Phase 4: R econometric reporting module (Granger causality, cross-correlations).
+- Phase 5: C++ Hanson LMSR synthetic market maker and backtesting engine.
+- Phase 6: Java Spring Boot backend API with WebSocket live-streaming updates.
 
 ---
 
