@@ -1,0 +1,24 @@
+# --- Core Data & Computation ---
+polars>=0.20.0        # High-performance dataframe manipulation
+numpy>=1.26.0         # Array operations and math
+pandas>=2.2.0         # Fallback dataframes (required by some ML libraries)
+
+# --- NLP & Machine Learning (DeBERTa & Baseline) ---
+torch>=2.2.0          # PyTorch backend for Transformers
+transformers>=4.37.0  # Hugging Face models (DeBERTa-v3)
+accelerate>=0.27.0    # Memory efficient model loading
+vaderSentiment>=3.3.2 # Lightweight lexicon baseline for the Phase 1 prototype
+
+# --- Orchestration & Pipelines ---
+dagster>=1.6.0        # Data pipeline orchestrator
+dagster-webserver>=1.6.0 # Dagster UI
+
+# --- API Clients & Network ---
+requests>=2.31.0      # REST API polling (Kalshi/Polymarket/X)
+websockets>=12.0      # For real-time market data streaming
+python-dotenv>=1.0.1  # Environment variable management (.env)
+
+# --- Prototyping & Visualization (Phase 1) ---
+jupyter>=1.0.0        # Notebook environment for the end-to-end prototype
+matplotlib>=3.8.0     # Core plotting
+seaborn>=0.13.2       # Statistical data visualization (lead-lag plots)
