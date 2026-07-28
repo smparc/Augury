@@ -284,7 +284,13 @@ def cross_correlation(
     for lag in range(-max_lag, max_lag + 1):
         shifted = s.shift(lag)
         pair = pd.concat([shifted, p], axis=1).dropna()
-        corr = float(pair.iloc[:, 0].corr(pair.iloc[:, 1])) if len(pair) > 2 else float("nan")
+        # A constant series has zero standard deviation, making the correlation
+        # 0/0. pandas returns NaN, which is the honest answer; computing it
+        # anyway just emits a divide warning on the way to the same result.
+        if len(pair) > 2 and pair.iloc[:, 0].nunique() > 1 and pair.iloc[:, 1].nunique() > 1:
+            corr = float(pair.iloc[:, 0].corr(pair.iloc[:, 1]))
+        else:
+            corr = float("nan")
         rows.append(
             {
                 "lag": lag,

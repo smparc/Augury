@@ -79,11 +79,16 @@ class SliceResult:
         candles = [p for p in self.prices if p.source.value == "candle"]
         lines.append(f"  price bars fetched   : {len(candles)}")
         if book:
-            lines.append(
-                f"  book                 : bid {book.yes_bid} / ask {book.yes_ask}"
-                f"  spread {book.spread:.4f}" if book.spread is not None else ""
-            )
+            spread = f"  spread {book.spread:.4f}" if book.spread is not None else ""
+            lines.append(f"  book                 : bid {book.yes_bid} / ask {book.yes_ask}{spread}")
             lines.append(f"  depth (bid/ask)      : {book.depth_bid} / {book.depth_ask}")
+            if book.yes_bid is None or book.yes_ask is None:
+                lines.append(
+                    "  NOTE: the book is one-sided, so there is no quoted width to"
+                )
+                lines.append(
+                    "        calibrate b against — the simulation used the fallback."
+                )
         if self.calibrated_b is not None:
             lines.append(f"  LMSR b (from depth)  : {self.calibrated_b:,.2f}")
 
@@ -266,6 +271,16 @@ def _analyze(result: SliceResult) -> None:
     if len(signal_values) < 5:
         result.granger_note = (
             f"only {len(signal_values)} aligned observations — not enough to analyze"
+        )
+        return
+
+    # A correlation against a constant series is 0/0. Reporting the resulting
+    # zeros as "no relationship" would be wrong — the truth is that this market
+    # did not move at all in the window, so the data cannot answer the question.
+    if len(set(price_values)) < 2:
+        result.granger_note = (
+            f"market price never moved across all {len(price_values)} aligned bars "
+            "(deep out-of-the-money) — correlation and causality are both undefined here"
         )
         return
 

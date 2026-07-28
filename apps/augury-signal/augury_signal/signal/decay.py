@@ -27,6 +27,10 @@ from ..models import Calibration, SignalPoint
 
 LN2 = math.log(2.0)
 
+# Floor for the adaptive-decay volume baseline. Most tracked markets are quiet
+# most of the time, so the median hourly post count is frequently 0.
+MIN_BASELINE_POST_RATE = 1.0
+
 
 def decay_lambda(half_life_seconds: float) -> float:
     """lambda = ln(2) / t_half."""
@@ -199,8 +203,15 @@ def effective_half_life(
         return base_half_life_seconds
 
     volume_factor = 1.0
-    if baseline_post_rate > 0 and volume_surge_multiple > 0:
-        surge = recent_post_count / (baseline_post_rate * volume_surge_multiple)
+    if volume_surge_multiple > 0:
+        # A sparse market has a median hourly post count of zero, which would
+        # make the surge ratio undefined and silently disable the volume
+        # trigger exactly where it is most useful — a quiet market that
+        # suddenly gets 30 posts in an hour is the clearest possible surge.
+        # Floor the baseline at one post per hour so the comparison stays
+        # meaningful.
+        baseline = max(baseline_post_rate, MIN_BASELINE_POST_RATE)
+        surge = recent_post_count / (baseline * volume_surge_multiple)
         volume_factor = max(1.0, surge)
 
     price_factor = 1.0
