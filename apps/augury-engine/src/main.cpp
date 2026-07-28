@@ -14,10 +14,12 @@
 
 #include <nlohmann/json.hpp>
 
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 

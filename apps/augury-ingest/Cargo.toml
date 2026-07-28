@@ -11,11 +11,14 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signa
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 # Runtime-checked queries only (`sqlx::query`, never `sqlx::query!`), so the
 # crate compiles without a live database to introspect at build time.
+# `runtime-tokio` + `tls-rustls` as separate features rather than the combined
+# `runtime-tokio-rustls`, which sqlx 0.8 dropped. The split spelling is valid on
+# both 0.7 and 0.8.
 sqlx = { version = "0.8", default-features = false, features = [
-    "runtime-tokio-rustls",
+    "runtime-tokio",
+    "tls-rustls",
     "postgres",
     "chrono",
-    "macros",
 ] }
 async-trait = "0.1"
 serde = { version = "1", features = ["derive"] }

@@ -15,9 +15,14 @@
 #include <nlohmann/json.hpp>
 
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <stdexcept>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "augury/backtest.hpp"
