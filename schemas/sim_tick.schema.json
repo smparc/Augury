@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/smparc/augury/schemas/sim_tick.schema.json",
+  "title": "SimTick",
+  "description": "One step of the synthetic LMSR market's price path. Produced by augury-engine (C++) in response to a StanceSignal, published on Redis channel 'augury.sim.<market_id>', consumed by augury-api for live streaming and by augury-analytics for backtest comparison.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["market_id", "ts", "run_id", "sim_price", "b", "q_yes", "q_no"],
+  "properties": {
+    "market_id": {
+      "type": "string",
+      "pattern": "^(kalshi|polymarket):.+$"
+    },
+    "ts": { "type": "string", "format": "date-time" },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "default": "live",
+      "description": "'live' for the running simulation, or a named backtest run. A walk-forward sweep writes many run_ids per market; they are independent price paths and must never be merged."
+    },
+    "sim_price": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "LMSR price of the YES outcome: exp(q_yes/b) / (exp(q_yes/b) + exp(q_no/b)), computed via log-sum-exp."
+    },
+    "b": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Liquidity parameter at this step. Calibrated from the real market's observed book depth rather than fixed, so the synthetic market's price sensitivity tracks the real one it is being compared against."
+    },
+    "q_yes": { "type": "number", "description": "Net outstanding YES shares." },
+    "q_no": { "type": "number", "description": "Net outstanding NO shares." },
+    "cost": {
+      "type": ["number", "null"],
+      "description": "Value of the cost function C(q) = b * ln(sum_j exp(q_j/b)) at this state. Successive differences are what a trade actually cost the market maker."
+    },
+    "trade_size": {
+      "type": ["number", "null"],
+      "description": "Signed shares traded this step: positive bought YES, negative bought NO. Zero when the signal did not move enough to trigger a trade."
+    },
+    "signal": {
+      "type": ["number", "null"],
+      "minimum": -1,
+      "maximum": 1,
+      "description": "The S(t) value that drove this step, carried through for attribution."
+    }
+  }
+}

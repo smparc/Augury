@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/smparc/augury/schemas/stance_signal.schema.json",
+  "title": "StanceSignal",
+  "description": "One point of the aggregated social signal S(t) for one market. Published on Redis channel 'augury.signal.<market_id>' by the Python stance pipeline; consumed by augury-engine (C++, drives the LMSR) and augury-api (Java, streams to clients).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["market_id", "ts", "model_version", "s_t", "n_posts", "weight_sum", "half_life_seconds"],
+  "properties": {
+    "market_id": {
+      "type": "string",
+      "pattern": "^(kalshi|polymarket):.+$"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp the signal is evaluated at (the 't' in S(t)), not the wall-clock time it was computed."
+    },
+    "model_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stance model identity, e.g. 'vader-3.3.2' or 'deberta-v3-stance-2026.07'. Signals from different model versions are separate series and must not be concatenated."
+    },
+    "s_t": {
+      "type": "number",
+      "minimum": -1,
+      "maximum": 1,
+      "description": "Weight- and time-decay-weighted mean stance. -1 fully bearish, +1 fully bullish on the market's target proposition."
+    },
+    "p_hat": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "s_t mapped into probability space. Required for any Brier comparison against market price, since s_t itself is in [-1,1] and is not a probability."
+    },
+    "calibration": {
+      "type": ["string", "null"],
+      "enum": ["affine", "platt", null],
+      "description": "How p_hat was produced. 'affine' is the assumption-free (s_t+1)/2; 'platt' is a logistic fit on resolved markets. Must accompany p_hat — comparing scores across mappings is meaningless."
+    },
+    "n_posts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Accepted posts contributing to this point. A small n means a noisy signal regardless of how confident s_t looks."
+    },
+    "weight_sum": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Denominator of the S(t) expression. Near-zero means every contributing post has decayed away and s_t is effectively stale."
+    },
+    "half_life_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Effective half-life at this point. Varies over time under adaptive decay, so it travels with the signal."
+    },
+    "computed_at": { "type": "string", "format": "date-time" }
+  }
+}

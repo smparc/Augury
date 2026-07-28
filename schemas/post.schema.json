@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/smparc/augury/schemas/post.schema.json",
+  "title": "Post",
+  "description": "A single social post bound to one tracked market, after ingestion and filtering. Produced by augury-ingest (Rust), consumed by the stance pipeline (Python). Rejected posts are emitted too, carrying a non-'accepted' filter_verdict, so the filter's precision stays auditable.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["post_id", "market_id", "created_at", "text", "filter_verdict", "source"],
+  "properties": {
+    "post_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Platform-native post id. Unique per post but NOT unique in this stream: one post relevant to two tracked markets is emitted once per market."
+    },
+    "market_id": {
+      "type": "string",
+      "pattern": "^(kalshi|polymarket):.+$",
+      "description": "Canonical market id, '<venue>:<ticker>'."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the post was published. This is the timestamp used for time-decay and for lead-lag alignment — never ingested_at."
+    },
+    "ingested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Augury read the post. Difference from created_at is the ingestion lag metric."
+    },
+    "author_id": { "type": ["string", "null"] },
+    "author_created_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Author account creation time. Input to the account-age bot heuristic."
+    },
+    "followers": { "type": "integer", "minimum": 0, "default": 0 },
+    "engagements": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Likes + reposts + replies + quotes, summed. Feeds the S(t) weight w = ln(1+followers) * (1+engagements)."
+    },
+    "lang": { "type": ["string", "null"] },
+    "text": { "type": "string", "minLength": 1 },
+    "minhash": {
+      "type": ["array", "null"],
+      "items": { "type": "integer" },
+      "description": "MinHash signature over the post's shingles, for near-duplicate detection."
+    },
+    "lsh_bucket": {
+      "type": ["string", "null"],
+      "description": "LSH band bucket the signature hashed into; posts sharing a bucket are duplicate candidates."
+    },
+    "filter_verdict": {
+      "type": "string",
+      "enum": ["accepted", "duplicate", "bot", "low_quality", "off_topic"],
+      "description": "Only 'accepted' posts contribute to S(t)."
+    },
+    "filter_reason": {
+      "type": ["string", "null"],
+      "description": "Human-readable justification, e.g. 'jaccard 0.94 vs post 1234'."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["x", "fixture"],
+      "description": "'fixture' means replayed test data, not a paid live read. Anything derived from fixture posts must never be reported as a real result."
+    }
+  }
+}

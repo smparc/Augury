@@ -1,0 +1,171 @@
+# Augury — market-to-query mapping (README enhancement 5).
+#
+# Source of truth for which markets are tracked and which posts count as being
+# "about" each one. Mirrored into the `markets` and `market_queries` tables by
+# `augury_signal.cli sync-config`, which both augury-ingest (Rust) and the NLP
+# pipeline read from.
+#
+# Two things this file buys us:
+#   1. augury-ingest queries a scoped set of terms instead of an unfiltered
+#      firehose, which matters because X reads cost money per post.
+#   2. every post arrives already bound to a market, so the stance model gets a
+#      fixed `target` to condition on rather than having to infer which market
+#      a post is even about.
+#
+# Query-building caveat: X's recent-search endpoint silently ignores the rich
+# operators from the x.com search box (`min_faves:`, `since:`, `filter:`...) —
+# they do not error, they just do nothing. Keep terms to plain keywords and
+# phrases; quality filtering happens in the Rust bot/spam filter instead.
+
+version: 1
+
+defaults:
+  language: en
+  # Baseline half-life for the S(t) exponential decay, in hours.
+  half_life_hours: 6.0
+  # Enhancement 3 — adaptive decay. When a market gets unusually busy or its
+  # price starts moving hard, stale posts should stop dominating the average.
+  adaptive_decay:
+    enabled: true
+    min_half_life_hours: 0.5
+    # Shorten the half-life when post volume over the trailing hour exceeds
+    # this multiple of the market's trailing 24h hourly median.
+    volume_surge_multiple: 3.0
+    # ...or when realized price volatility over the trailing hour exceeds this
+    # many probability points.
+    price_move_threshold: 0.05
+  # Terms excluded from every market's query. Crypto/betting spam accounts
+  # reliably pollute anything financial.
+  global_exclude:
+    - giveaway
+    - airdrop
+    - "promo code"
+    - "sign up bonus"
+
+markets:
+  # ---------------------------------------------------------------------------
+  # Near-term Fed decision. Closes 2026-07-29, so this is the market that
+  # exercises the resolution watcher and a real final Brier/BSS soonest.
+  # ---------------------------------------------------------------------------
+  - id: kalshi:KXFEDDECISION-26JUL-C25
+    venue: kalshi
+    ticker: KXFEDDECISION-26JUL-C25
+    series_ticker: KXFEDDECISION
+    title: Will the Federal Reserve Cut rates by 25bps at their July 2026 meeting?
+    # Stance target. Phrased as a declarative claim because the model scores
+    # agreement with a proposition, not sentiment about a topic.
+    target: The Federal Reserve will cut interest rates by 25 basis points at its July 2026 meeting.
+    query:
+      keywords:
+        - Fed rate cut
+        - FOMC
+        - "interest rates"
+        - rate decision
+        - basis points
+        - dovish
+        - hawkish
+      tickers: []
+      entities:
+        - Federal Reserve
+        - Jerome Powell
+        - FOMC
+      aliases:
+        - "the Fed"
+        - Powell
+        - "Fed chair"
+        - "Federal Open Market Committee"
+        # Common misspellings seen in the wild.
+        - Jerome Powel
+        - "J Pow"
+        - JPow
+      exclude:
+        - "fed up"
+        - "fed ex"
+
+  # ---------------------------------------------------------------------------
+  # Same series, next meeting. Longer runway, so this is the one that
+  # accumulates enough history for the Granger tests to mean anything.
+  # ---------------------------------------------------------------------------
+  - id: kalshi:KXFEDDECISION-26SEP-C25
+    venue: kalshi
+    ticker: KXFEDDECISION-26SEP-C25
+    series_ticker: KXFEDDECISION
+    title: Will the Federal Reserve Cut rates by 25bps at their September 2026 meeting?
+    target: The Federal Reserve will cut interest rates by 25 basis points at its September 2026 meeting.
+    query:
+      keywords:
+        - Fed rate cut
+        - FOMC
+        - September meeting
+        - "interest rates"
+        - basis points
+        - dovish
+        - hawkish
+      tickers: []
+      entities:
+        - Federal Reserve
+        - Jerome Powell
+        - FOMC
+      aliases:
+        - "the Fed"
+        - Powell
+        - JPow
+      exclude:
+        - "fed up"
+        - "fed ex"
+
+  # ---------------------------------------------------------------------------
+  # Long-horizon political market. High and sustained social volume, which
+  # makes it the useful stress test for the bot/spam filter.
+  # ---------------------------------------------------------------------------
+  - id: kalshi:KXPRESPARTY-2028-D
+    venue: kalshi
+    ticker: KXPRESPARTY-2028-D
+    series_ticker: KXPRESPARTY
+    title: Will Democratic win the Presidency in 2028?
+    target: The Democratic party will win the 2028 United States presidential election.
+    query:
+      keywords:
+        - 2028 election
+        - presidential race
+        - Democratic nominee
+        - primary polls
+        - electoral college
+      tickers: []
+      entities:
+        - Democratic Party
+        - White House
+      aliases:
+        - Dems
+        - "the Democrats"
+        - DNC
+      exclude:
+        - "democratic republic"
+
+  # ---------------------------------------------------------------------------
+  # Crypto. Enormous social volume and a genuinely liquid book, so this is the
+  # market where LMSR `b` calibration against real depth gets a real workout.
+  # ---------------------------------------------------------------------------
+  - id: kalshi:KXBTCMAXY-26DEC31-149999.99
+    venue: kalshi
+    ticker: KXBTCMAXY-26DEC31-149999.99
+    series_ticker: KXBTCMAXY
+    title: Will Bitcoin be above $149,999.99 by Dec 31, 2026 at 11:59 PM ET?
+    target: Bitcoin will trade above $150,000 before the end of 2026.
+    query:
+      keywords:
+        - bitcoin
+        - BTC price
+        - "150k"
+        - all time high
+        - bull run
+      tickers:
+        - $BTC
+      entities:
+        - Bitcoin
+      aliases:
+        - btc
+        - "digital gold"
+      exclude:
+        - bitcoin cash
+        - "free bitcoin"

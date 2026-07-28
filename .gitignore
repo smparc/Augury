@@ -1,0 +1,58 @@
+# --- Secrets ---
+.env
+.env.local
+*.pem
+*.key
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.dagster/
+dagster_home/
+
+# --- Rust ---
+target/
+**/*.rs.bk
+
+# --- C++ ---
+build/
+cmake-build-*/
+CMakeUserPresets.json
+_deps/
+
+# --- Java ---
+apps/augury-api/target/
+.mvn/wrapper/maven-wrapper.jar
+*.class
+
+# --- R ---
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+/apps/augury-analytics/reports/*_files/
+/apps/augury-analytics/reports/*.html
+/apps/augury-analytics/reports/*.pdf
+.quarto/
+
+# --- Models & data ---
+models/
+.cache/
+huggingface/
+data/raw/
+data/interim/
+*.parquet
+*.duckdb
+
+# --- Editors / OS ---
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

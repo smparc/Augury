@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/smparc/augury/schemas/price_tick.schema.json",
+  "title": "PriceTick",
+  "description": "One price observation for a real market, from either a historical candle close or a live order-book snapshot. Published on Redis channel 'augury.price.<market_id>'. Book snapshots carry the depth and spread that the LMSR liquidity parameter b is calibrated from (enhancement 4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["market_id", "ts", "source"],
+  "properties": {
+    "market_id": {
+      "type": "string",
+      "pattern": "^(kalshi|polymarket):.+$"
+    },
+    "ts": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "string",
+      "enum": ["candle", "book"],
+      "description": "'candle' is a bar close from history; 'book' is a live top-of-book snapshot. Only 'book' ticks populate the depth fields, so mixing the two without checking this field corrupts any liquidity analysis."
+    },
+    "yes_price": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Probability of YES, as a float in [0,1]. Kalshi reports these as dollar-denominated strings ('0.0300'); parsing to float happens at the client boundary so nothing downstream handles strings."
+    },
+    "yes_bid": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "yes_ask": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "spread": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "yes_ask - yes_bid. Stored rather than derived so rows with a partial book remain unambiguous."
+    },
+    "depth_bid": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Shares resting on the bid within the quoted range."
+    },
+    "depth_ask": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Shares resting on the ask within the quoted range."
+    },
+    "volume": { "type": ["number", "null"], "minimum": 0 },
+    "fetched_at": { "type": "string", "format": "date-time" }
+  }
+}
