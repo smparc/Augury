@@ -3,11 +3,23 @@
 # Read-only except for `write_granger_results`. The analytics module consumes
 # what the pipeline produced and writes back only its own conclusions.
 
-suppressPackageStartupMessages({
-  library(DBI)
-  library(RPostgres)
-  library(dplyr)
-})
+# Database drivers are loaded lazily rather than at source time. Sourcing this
+# file must not require DBI/RPostgres to be installed: the lead-lag and scoring
+# functions are useful (and testable) on data from any source, and forcing a
+# Postgres driver on anyone who just wants to run the econometrics is wrong.
+require_db_packages <- function() {
+  missing <- Filter(
+    function(pkg) !requireNamespace(pkg, quietly = TRUE),
+    c("DBI", "RPostgres")
+  )
+  if (length(missing) > 0) {
+    stop(sprintf(
+      "database access needs the following package(s): %s — install with install.packages(c(%s))",
+      paste(missing, collapse = ", "),
+      paste(sprintf("'%s'", missing), collapse = ", ")
+    ))
+  }
+}
 
 #' Connection parameters from the repo-root .env, matching the other services.
 augury_connection_params <- function(env_file = find_env_file()) {
@@ -56,6 +68,7 @@ find_env_file <- function() {
 
 #' Open a connection. Caller is responsible for `DBI::dbDisconnect`.
 augury_connect <- function(params = augury_connection_params()) {
+  require_db_packages()
   DBI::dbConnect(
     RPostgres::Postgres(),
     host = params$host, port = params$port, dbname = params$dbname,

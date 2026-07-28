@@ -19,8 +19,17 @@
 
 suppressPackageStartupMessages({
   library(dplyr)
-  library(ggplot2)
 })
+
+# ggplot2 is only needed by the `plot_*` helpers below, so it is loaded on
+# demand. The scoring functions are the part that gets tested and reused, and
+# they should not drag a plotting stack in with them.
+require_ggplot <- function() {
+  if (!requireNamespace("ggplot2", quietly = TRUE)) {
+    stop("plotting needs ggplot2 — install with install.packages('ggplot2')")
+  }
+  library(ggplot2)
+}
 
 #' Brier score of probabilistic forecasts against a realized outcome.
 #'
@@ -105,6 +114,7 @@ calibration_curve <- function(forecasts, outcomes, bins = 10) {
 
 #' Plot a reliability diagram. Point size encodes bin count.
 plot_calibration <- function(curve, title = "Calibration") {
+  require_ggplot()
   ggplot(curve, aes(x = .data$mean_forecast, y = .data$observed_frequency)) +
     geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey50") +
     geom_point(aes(size = .data$n), alpha = 0.75) +
@@ -123,6 +133,7 @@ plot_calibration <- function(curve, title = "Calibration") {
 
 #' Plot signal against market price over time, on twin scales.
 plot_signal_vs_price <- function(aligned, title = "Signal vs. market price") {
+  require_ggplot()
   scale_factor <- 1
   aligned %>%
     mutate(signal_scaled = (.data$signal + 1) / 2 * scale_factor) %>%
@@ -138,6 +149,7 @@ plot_signal_vs_price <- function(aligned, title = "Signal vs. market price") {
 
 #' Plot the cross-correlation function with a lag-0 reference line.
 plot_cross_correlation <- function(ccf_table, title = "Cross-correlation by lag") {
+  require_ggplot()
   ggplot(ccf_table, aes(x = .data$lag, y = .data$correlation)) +
     geom_col(aes(fill = .data$interpretation)) +
     geom_vline(xintercept = 0, linetype = "dashed", colour = "grey40") +

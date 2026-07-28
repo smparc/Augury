@@ -1,0 +1,31 @@
+Package: auguryanalytics
+Type: Package
+Title: Lead-Lag and Calibration Analytics for Augury
+Version: 0.2.0
+Authors@R: person("Augury", role = c("aut", "cre"), email = "noreply@example.com")
+Description: Econometric analysis of the relationship between social stance
+    signals and prediction-market prices. Provides logit-space Granger causality
+    testing with ADF stationarity checks and Benjamini-Hochberg FDR correction
+    across markets, plus Brier and Brier Skill Score calibration measurement
+    against the market's own price as the reference forecast.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends:
+    R (>= 4.3)
+Imports:
+    DBI,
+    RPostgres,
+    dplyr,
+    tidyr,
+    tibble,
+    ggplot2,
+    tseries,
+    vars,
+    lmtest,
+    jsonlite
+Suggests:
+    testthat (>= 3.0.0),
+    quarto,
+    knitr
+Config/testthat/edition: 3
+RoxygenNote: 7.3.1
