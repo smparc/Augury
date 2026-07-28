@@ -180,13 +180,23 @@ public class AuguryRepository {
 
     // -- signals ------------------------------------------------------------
 
+    /**
+     * Optional filters use {@code CAST(? AS type) IS NULL} rather than a bare
+     * {@code ? IS NULL}.
+     *
+     * <p>PostgreSQL infers a parameter's type from how it is used. A parameter
+     * appearing <em>only</em> inside {@code IS NULL} gives it nothing to infer
+     * from, and the server rejects the statement with "could not determine data
+     * type of parameter". The cast supplies the type explicitly. This bites at
+     * runtime, not compile time, so it is easy to ship.
+     */
     public List<StanceSignal> signalSeries(String marketId, String modelVersion, Instant since, int limit) {
         return jdbc.query(
                 """
                 SELECT * FROM signals
                  WHERE market_id = ?
-                   AND (? IS NULL OR model_version = ?)
-                   AND (? IS NULL OR ts >= ?)
+                   AND (CAST(? AS text) IS NULL OR model_version = ?)
+                   AND (CAST(? AS timestamptz) IS NULL OR ts >= ?)
                  ORDER BY ts
                  LIMIT ?
                 """,
@@ -213,7 +223,7 @@ public class AuguryRepository {
                 """
                 SELECT * FROM market_prices
                  WHERE market_id = ?
-                   AND (? IS NULL OR ts >= ?)
+                   AND (CAST(? AS timestamptz) IS NULL OR ts >= ?)
                  ORDER BY ts
                  LIMIT ?
                 """,
@@ -240,7 +250,7 @@ public class AuguryRepository {
                 SELECT * FROM sim_prices
                  WHERE market_id = ?
                    AND run_id = ?
-                   AND (? IS NULL OR ts >= ?)
+                   AND (CAST(? AS timestamptz) IS NULL OR ts >= ?)
                  ORDER BY ts
                  LIMIT ?
                 """,
@@ -258,7 +268,7 @@ public class AuguryRepository {
         return jdbc.query(
                 """
                 SELECT * FROM scores
-                 WHERE (? IS NULL OR market_id = ?)
+                 WHERE (CAST(? AS text) IS NULL OR market_id = ?)
                  ORDER BY computed_at DESC
                  LIMIT 500
                 """,
@@ -307,7 +317,7 @@ public class AuguryRepository {
         return jdbc.query(
                 """
                 SELECT * FROM ledger_fills
-                 WHERE (? IS NULL OR market_id = ?)
+                 WHERE (CAST(? AS text) IS NULL OR market_id = ?)
                    AND strategy = ?
                  ORDER BY ts DESC
                  LIMIT ?

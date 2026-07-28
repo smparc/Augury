@@ -86,10 +86,16 @@ impl ReadBudget {
     pub async fn reserve(&self, requested: i32) -> Result<i32> {
         anyhow::ensure!(requested >= 0, "requested must be non-negative");
 
+        // `INSERT ... SELECT ... WHERE` rather than `INSERT ... VALUES`: on the
+        // first request of a UTC day there is no conflicting row, so the
+        // `ON CONFLICT` guard never fires and a `VALUES` form would happily
+        // insert a reservation larger than the entire daily budget. The WHERE
+        // on the SELECT closes that hole; the ON CONFLICT guard covers every
+        // subsequent request. Both are needed.
         let row: Option<(i32,)> = sqlx::query_as(
             r#"
             INSERT INTO read_budget (day, service, reads_used)
-            VALUES (CURRENT_DATE, $1, $2)
+            SELECT CURRENT_DATE, $1, $2 WHERE $2 <= $3
             ON CONFLICT (day, service) DO UPDATE
                 SET reads_used = read_budget.reads_used + EXCLUDED.reads_used,
                     updated_at = now()
