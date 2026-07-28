@@ -100,11 +100,11 @@ watcher: ## Run the market resolution watcher once
 
 .PHONY: ingest
 ingest: ## Run the Rust ingestion service (fixture mode unless AUGURY_X_LIVE=1)
-	cd apps/augury-ingest && cargo run --release
+	cd apps/augury-ingest && $(CARGO) run --release
 
 .PHONY: ingest-build
 ingest-build: ## Build the Rust ingestion service
-	cd apps/augury-ingest && cargo build --release
+	cd apps/augury-ingest && $(CARGO) build --release
 
 # ---------------------------------------------------------------------------
 # C++ — augury-engine (Stage 5)
@@ -129,11 +129,11 @@ bench: engine-build ## Run the C++ benchmark suite
 
 .PHONY: api
 api: ## Run the Spring Boot API
-	cd apps/augury-api && ./mvnw spring-boot:run
+	cd apps/augury-api && $(MVN) spring-boot:run
 
 .PHONY: api-build
 api-build: ## Package the Spring Boot API
-	cd apps/augury-api && ./mvnw -q package
+	cd apps/augury-api && $(MVN) -q package
 
 # ---------------------------------------------------------------------------
 # R — augury-analytics (Stage 7)
@@ -141,7 +141,7 @@ api-build: ## Package the Spring Boot API
 
 .PHONY: analytics
 analytics: ## Render the lead-lag / Granger causality Quarto report
-	cd apps/augury-analytics && Rscript -e "quarto::quarto_render('reports/lead_lag_analysis.qmd')"
+	cd apps/augury-analytics && $(RSCRIPT) -e "quarto::quarto_render('reports/lead_lag_analysis.qmd')"
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -153,7 +153,7 @@ test-py: ## pytest — augury-signal
 
 .PHONY: test-rust
 test-rust: ## cargo test — augury-ingest
-	cd apps/augury-ingest && cargo test
+	cd apps/augury-ingest && $(CARGO) test
 
 .PHONY: test-cpp
 test-cpp: ## ctest (Catch2) — augury-engine
@@ -163,11 +163,11 @@ test-cpp: ## ctest (Catch2) — augury-engine
 
 .PHONY: test-java
 test-java: ## mvn test — augury-api
-	cd apps/augury-api && ./mvnw -q test
+	cd apps/augury-api && $(MVN) -B test
 
 .PHONY: test-r
 test-r: ## testthat — augury-analytics
-	cd apps/augury-analytics && Rscript -e "testthat::test_dir('tests/')"
+	cd apps/augury-analytics && $(RSCRIPT) -e "testthat::test_dir('tests/testthat')"
 
 .PHONY: test-all
 test-all: test-py test-rust test-cpp test-java test-r ## Run every language's test suite
