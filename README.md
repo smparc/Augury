@@ -43,7 +43,7 @@ All seven phases are implemented. Three of the five services have been executed 
 |---|---|---|---|
 | `augury-signal` | Python 3.12 | **Runs, tested** | 139 pytest tests, ruff clean, live end-to-end slice against Kalshi |
 | `augury-api` | Java 25 | **Needs JDK 25** | 9 JUnit tests passed under JDK 21; `pom.xml` now targets 25 |
-| `augury-analytics` | R 4.6 | **Runs, tested** | 40 testthat tests |
+| `augury-analytics` | R 4.6 | **Runs, tested** | 55 testthat tests |
 | `augury-ingest` | Rust 1.97 | **Not compiled** | blocked by Smart App Control — see [docs/BUILD.md](docs/BUILD.md) |
 | `augury-engine` | C++20 | **Not compiled** | no C++ compiler installed — see [docs/BUILD.md](docs/BUILD.md) |
 
@@ -348,7 +348,7 @@ Every `make` target accepts a toolchain override (`make test-java MVN=/path/to/m
 ```bash
 make test-py      # 139 pytest tests
 make test-java    #   9 JUnit tests
-make test-r       #  40 testthat tests
+make test-r       #  55 testthat tests
 make test-rust    # not yet compiled — see docs/BUILD.md
 make test-cpp     # not yet compiled — see docs/BUILD.md
 make test-all
@@ -377,7 +377,19 @@ Two properties the suites are built around:
 
 ## Known Gaps
 
-Stated explicitly rather than left to be discovered:
+A full correctness review has been run over the codebase. It found and fixed five
+defects worth recording, because each is a class of bug the existing tests could
+not have caught:
+
+| Where | Defect |
+|---|---|
+| R `align_on_grid` | `cut()` bucketing dropped the timezone and shifted every timestamp by the local UTC offset, so the signal/price join matched almost nothing. The covering test asserted only an upper bound on row count, so it passed at zero rows. |
+| Java `AuguryRepository` | Optional filters used a bare `? IS NULL`, which PostgreSQL rejects with "could not determine data type of parameter". Unit tests mock the repository, so the SQL was never executed. |
+| Rust `ReadBudget::reserve` | The `ON CONFLICT` ceiling guard does not fire on the first insert of a UTC day, so a single request larger than the entire daily budget would have been allowed through. |
+| C++ | Five missing standard headers (`<cstdint>`, `<limits>`, `<string>`, `<utility>`, `<stdexcept>`) — invisible without a compiler. |
+| Python `simulate_lmsr` | Recalibrated `b` to the same constant every step, making per-step liquidity tracking a no-op, and left a dead local behind. |
+
+Remaining, stated explicitly rather than left to be discovered:
 
 - **Rust and C++ have never been compiled.** They may contain errors that only a compiler will find. See [docs/BUILD.md](docs/BUILD.md) for the two blockers and how to clear them.
 - **The DeBERTa path needs a real checkpoint.** Plain `microsoft/deberta-v3-base` is a pretrained encoder with a randomly initialized head — it has no concept of entailment, and using it directly would produce confident noise. The default points at an NLI-tuned checkpoint, which makes zero-shot stance detection work without a labeled corpus. A fine-tune on prediction-market stance data would very likely beat it.

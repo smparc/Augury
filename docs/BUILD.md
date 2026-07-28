@@ -10,7 +10,7 @@ rediscovered.
 |---|---|---|---|
 | `augury-signal` | Python 3.12 | **Builds and runs** | 139 pytest tests, ruff clean, live end-to-end slice |
 | `augury-api` | Java 25 | **Blocked — JDK version** | 9 JUnit tests passed under JDK 21, before `pom.xml` was raised to 25 |
-| `augury-analytics` | R 4.6 | **Builds and tests** | 40 testthat tests |
+| `augury-analytics` | R 4.6 | **Builds and tests** | 55 testthat tests |
 | `augury-ingest` | Rust 1.97 | **Blocked — see Smart App Control** | not compiled |
 | `augury-engine` | C++20 | **Blocked — no compiler installed** | not compiled |
 
