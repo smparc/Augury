@@ -83,8 +83,8 @@ for (i in seq_len(nrow(markets))) {
   if (nrow(signals) == 0 || nrow(prices) == 0) next
 
   aligned <- align_on_grid(
-    signals %>% select(ts, s_t),
-    prices %>% select(ts, mid),
+    signals %>% dplyr::select(ts, s_t),
+    prices %>% dplyr::select(ts, mid),
     price_col = "mid"
   )
 
@@ -142,7 +142,7 @@ cat(":::\n")
 ```{r granger-table}
 #| eval: !expr "db_available && length(market_data) > 0"
 results_frame %>%
-  select(
+  dplyr::select(
     Market = market_id,
     Lag = lag_order,
     N = n_obs,
@@ -233,7 +233,7 @@ reverse_frame <- results_to_frame(apply_fdr_correction(reverse_results, alpha = 
 
 if (nrow(reverse_frame) > 0) {
   reverse_frame %>%
-    select(Market = market_id, Lag = lag_order, N = n_obs,
+    dplyr::select(Market = market_id, Lag = lag_order, N = n_obs,
            F = f_statistic, `p (FDR)` = p_value_adj, Significant = significant) %>%
     mutate(across(where(is.numeric), ~ round(.x, 4))) %>%
     arrange(`p (FDR)`) %>%
@@ -278,7 +278,7 @@ if (nrow(scores) == 0) {
 } else {
   print(
     scores %>%
-      select(Market = market_id, Model = model_version, N = n_obs,
+      dplyr::select(Market = market_id, Model = model_version, N = n_obs,
              Calibration = calibration, `BS signal` = brier_signal,
              `BS market` = brier_market, BSS = bss, Outcome = resolved_outcome) %>%
       mutate(across(where(is.numeric), ~ round(.x, 4))) %>%
