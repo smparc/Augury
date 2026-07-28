@@ -93,6 +93,11 @@ def to_probability(s_t: float, calibration: Calibration, params: PlattParams | N
     raise ValueError(f"unknown calibration {calibration!r}")
 
 
+def _sigmoid_array(z: np.ndarray) -> np.ndarray:
+    """Vectorized stable logistic."""
+    return np.where(z >= 0, 1.0 / (1.0 + np.exp(-np.abs(z))), np.exp(-np.abs(z)) / (1.0 + np.exp(-np.abs(z))))
+
+
 def fit_platt(
     signals: Sequence[float],
     outcomes: Sequence[int],
@@ -102,13 +107,27 @@ def fit_platt(
 ) -> PlattParams:
     """Fit `p = sigmoid(a + b * S)` by minimizing log loss.
 
-    Newton-Raphson on the two-parameter logistic. The Hessian is 2x2 so this is
-    a handful of arithmetic operations per iteration and converges in well under
-    ten for any realistic input.
+    Newton-Raphson on the two-parameter logistic: the Hessian is 2x2, so each
+    iteration is a handful of arithmetic operations and convergence takes well
+    under ten for any realistic input.
 
-    Requires both outcome classes to be present. A batch of resolved markets
-    that all went the same way carries no information about where the decision
-    boundary sits, and the fit would run `b` off to infinity chasing it.
+    The fit targets *smoothed* labels rather than raw 0/1, following Platt's
+    original formulation:
+
+        y+ = (N+ + 1) / (N+ + 2)        y- = 1 / (N- + 2)
+
+    This is not cosmetic. Augury will have a handful of resolved markets long
+    before it has many, and small samples are frequently linearly separable —
+    every market the signal called bullish resolved YES, say. Against raw 0/1
+    labels the maximum-likelihood solution for separable data is unbounded:
+    Newton drives `b` toward infinity, log loss toward 0, and the resulting
+    "calibration" reports probabilities of exactly 1.0. A calibrator whose whole
+    purpose is to temper overconfidence would instead be manufacturing it.
+    Smoothing the targets bounds the solution and degrades gracefully — with
+    little evidence the fit stays near the prior instead of diverging.
+
+    Requires both outcome classes. A batch that all resolved the same way says
+    nothing about where the decision boundary sits.
     """
     s = np.asarray(signals, dtype=float)
     y = np.asarray(outcomes, dtype=float)
@@ -117,6 +136,8 @@ def fit_platt(
         raise ValueError(f"signals and outcomes differ in length: {s.shape} vs {y.shape}")
     if s.size < 2:
         raise ValueError(f"need at least 2 observations to fit, got {s.size}")
+    if not np.all(np.isfinite(s)):
+        raise ValueError("signals must all be finite")
     if not np.all((s >= -1.0) & (s <= 1.0)):
         raise ValueError("all signals must lie in [-1, 1]")
     if not np.all((y == 0.0) | (y == 1.0)):
@@ -128,39 +149,45 @@ def fit_platt(
             "history contains both outcomes"
         )
 
-    # Start from the affine map expressed in logistic terms: b = 2 puts
+    n_pos = float(np.count_nonzero(y == 1.0))
+    n_neg = float(np.count_nonzero(y == 0.0))
+    hi = (n_pos + 1.0) / (n_pos + 2.0)
+    lo = 1.0 / (n_neg + 2.0)
+    target = np.where(y == 1.0, hi, lo)
+
+    # Start from the affine map expressed in logistic terms: b = 2 maps
     # S in [-1,1] onto roughly logit([0.12, 0.88]).
     a, b = 0.0, 2.0
 
     for _ in range(max_iter):
-        z = a + b * s
-        p = np.where(z >= 0, 1.0 / (1.0 + np.exp(-z)), np.exp(z) / (1.0 + np.exp(z)))
-        p = np.clip(p, EPS, 1.0 - EPS)
+        p = np.clip(_sigmoid_array(a + b * s), EPS, 1.0 - EPS)
 
-        residual = p - y
-        grad = np.array([residual.sum(), (residual * s).sum()])
+        residual = p - target
+        grad_a = float(residual.sum())
+        grad_b = float((residual * s).sum())
 
         w = p * (1.0 - p)
-        h00 = w.sum()
-        h01 = (w * s).sum()
-        h11 = (w * s * s).sum()
+        h00 = float(w.sum())
+        h01 = float((w * s).sum())
+        h11 = float((w * s * s).sum())
         det = h00 * h11 - h01 * h01
 
         if abs(det) < 1e-12:
-            # Separable or near-degenerate data: the surface is flat in some
-            # direction and Newton has nothing to solve. Keep the last good fit.
+            # Degenerate curvature (e.g. every signal identical): nothing to solve.
             break
 
-        step_a = (h11 * grad[0] - h01 * grad[1]) / det
-        step_b = (h00 * grad[1] - h01 * grad[0]) / det
+        step_a = (h11 * grad_a - h01 * grad_b) / det
+        step_b = (h00 * grad_b - h01 * grad_a) / det
         a -= step_a
         b -= step_b
 
         if max(abs(step_a), abs(step_b)) < tol:
             break
 
-    z = a + b * s
-    p = np.clip(np.where(z >= 0, 1.0 / (1.0 + np.exp(-z)), np.exp(z) / (1.0 + np.exp(z))), EPS, 1 - EPS)
+    # Loss is reported against the true 0/1 outcomes, not the smoothed targets:
+    # smoothing is a fitting device, and quoting the smoothed loss would make
+    # the model look better than it forecasts.
+    p = np.clip(_sigmoid_array(a + b * s), EPS, 1.0 - EPS)
     loss = float(-np.mean(y * np.log(p) + (1.0 - y) * np.log(1.0 - p)))
 
     return PlattParams(a=float(a), b=float(b), n_obs=int(s.size), log_loss=loss)
