@@ -164,10 +164,28 @@ class TestMultipleComparisons:
         for original, adjusted in zip(raw, corrected, strict=True):
             assert adjusted.p_value_adj >= original
 
-    def test_kills_borderline_findings_in_a_large_batch(self):
-        """20 markets each at p=0.04 is what you expect from pure chance."""
+    def test_kills_a_lone_borderline_finding_among_nulls(self):
+        """The scenario the correction exists for.
+
+        Test 20 markets, 19 of which are pure noise with uniformly spread
+        p-values, and one squeaks in at p=0.04. Uncorrected that reads as
+        "sentiment leads price in this market"; it is what chance produces
+        roughly once per 20 tests at the 5% level.
+        """
+        nulls = [self._result(p) for p in np.linspace(0.05, 0.95, 19)]
+        corrected = benjamini_hochberg([self._result(0.04), *nulls])
+        assert not corrected[0].significant
+
+    def test_uniformly_borderline_batch_survives(self):
+        """The converse, and not a bug: all 20 markets at p=0.04 stays significant.
+
+        BH controls the false discovery *rate*, not the family-wise error rate.
+        One test below 0.05 out of 20 is expected under the global null; twenty
+        out of twenty is not, so the batch is collectively strong evidence even
+        though no single member is impressive.
+        """
         corrected = benjamini_hochberg([self._result(0.04) for _ in range(20)])
-        assert not any(r.significant for r in corrected)
+        assert all(r.significant for r in corrected)
 
     def test_keeps_a_genuinely_strong_finding(self):
         batch = [self._result(1e-6)] + [self._result(0.6) for _ in range(19)]
