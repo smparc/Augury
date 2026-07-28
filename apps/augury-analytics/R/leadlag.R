@@ -103,62 +103,111 @@ align_on_grid <- function(signals, prices, freq = "1 hour", max_fill_bars = 1,
     return(tibble::tibble(ts = as.POSIXct(character()), signal = numeric(), price = numeric()))
   }
 
-  bucket <- function(x) as.POSIXct(cut(x, breaks = freq))
+  empty <- tibble::tibble(
+    ts = as.POSIXct(character(), tz = "UTC"), signal = numeric(), price = numeric()
+  )
 
-  signal_grid <- signals %>%
-    mutate(ts = bucket(.data$ts)) %>%
-    group_by(.data$ts) %>%
-    summarise(signal = dplyr::last(.data$s_t), .groups = "drop")
+  step <- freq_seconds(freq)
 
-  price_grid <- prices %>%
-    rename(price = dplyr::all_of(price_col)) %>%
-    filter(!is.na(.data$price)) %>%
-    mutate(ts = bucket(.data$ts)) %>%
-    group_by(.data$ts) %>%
-    summarise(price = dplyr::last(.data$price), .groups = "drop")
+  # Floor to the bar by integer arithmetic on epoch seconds.
+  #
+  # Not `cut()`: that returns a *factor* whose levels are wall-clock strings
+  # carrying no timezone, so `as.POSIXct()` on them reinterprets each label in
+  # the session's local zone and silently shifts every timestamp by the UTC
+  # offset — four hours on the machine this was written on. Epoch arithmetic is
+  # exact and zone-independent.
+  floor_ts <- function(x) {
+    as.POSIXct(floor(as.numeric(x) / step) * step, origin = "1970-01-01", tz = "UTC")
+  }
 
-  full_grid <- tibble::tibble(
-    ts = seq(
-      from = min(c(signal_grid$ts, price_grid$ts)),
-      to   = max(c(signal_grid$ts, price_grid$ts)),
-      by   = freq
+  # Last observation within each bar, matching the documented convention.
+  bar_last <- function(ts, value) {
+    frame <- tibble::tibble(ts = floor_ts(ts), value = as.numeric(value))
+    frame <- frame[!is.na(frame$value), , drop = FALSE]
+    frame <- frame[order(frame$ts), , drop = FALSE]
+    frame[!duplicated(frame$ts, fromLast = TRUE), , drop = FALSE]
+  }
+
+  sig <- bar_last(signals$ts, signals$s_t)
+  names(sig)[2] <- "signal"
+  prc <- bar_last(prices$ts, prices[[price_col]])
+  names(prc)[2] <- "price"
+
+  if (nrow(sig) == 0 || nrow(prc) == 0) {
+    return(empty)
+  }
+
+  grid <- tibble::tibble(
+    ts = as.POSIXct(
+      seq(
+        from = min(c(as.numeric(sig$ts), as.numeric(prc$ts))),
+        to   = max(c(as.numeric(sig$ts), as.numeric(prc$ts))),
+        by   = step
+      ),
+      origin = "1970-01-01", tz = "UTC"
     )
   )
 
-  full_grid %>%
-    left_join(signal_grid, by = "ts") %>%
-    left_join(price_grid, by = "ts") %>%
-    mutate(
-      signal = tidyr::fill(data.frame(x = .data$signal), x, .direction = "down")$x,
-      price = tidyr::fill(data.frame(x = .data$price), x, .direction = "down")$x
-    ) %>%
-    # `fill` above is unbounded; re-drop anything that was carried further than
-    # the allowance by checking the original observations.
-    left_join(signal_grid %>% mutate(had_signal = TRUE), by = "ts", suffix = c("", "_orig")) %>%
-    left_join(price_grid %>% mutate(had_price = TRUE), by = "ts", suffix = c("", "_orig")) %>%
-    mutate(
-      gap_signal = cumulative_gap(.data$had_signal),
-      gap_price = cumulative_gap(.data$had_price)
-    ) %>%
-    dplyr::filter(
-      !is.na(.data$signal), !is.na(.data$price),
-      .data$gap_signal <= max_fill_bars, .data$gap_price <= max_fill_bars
-    ) %>%
+  joined <- grid %>%
+    dplyr::left_join(sig, by = "ts") %>%
+    dplyr::left_join(prc, by = "ts")
+
+  joined$signal <- carry_forward(joined$signal, max_fill_bars)
+  joined$price <- carry_forward(joined$price, max_fill_bars)
+
+  joined %>%
+    dplyr::filter(!is.na(.data$signal), !is.na(.data$price)) %>%
     # Explicitly namespaced: `vars` loads MASS, whose `select()` masks dplyr's
     # and takes a single argument, so an unqualified call fails here.
     dplyr::select("ts", "signal", "price")
 }
 
-#' Bars since the last real observation, for the fill-limit check.
-cumulative_gap <- function(had_observation) {
-  had <- !is.na(had_observation) & had_observation
-  gap <- integer(length(had))
-  running <- 0L
-  for (i in seq_along(had)) {
-    running <- if (had[i]) 0L else running + 1L
-    gap[i] <- running
+#' Carry a value forward across at most `limit` consecutive empty bars.
+#'
+#' The bound is the point. An unbounded fill would happily carry a price across
+#' a multi-hour outage and pair it with fresh sentiment, producing a lead-lag
+#' relationship that is an artifact of the join rather than of the data.
+carry_forward <- function(x, limit) {
+  out <- as.numeric(x)
+  last <- NA_real_
+  gap <- 0L
+
+  for (i in seq_along(out)) {
+    if (!is.na(out[i])) {
+      last <- out[i]
+      gap <- 0L
+    } else {
+      gap <- gap + 1L
+      out[i] <- if (gap <= limit) last else NA_real_
+    }
   }
-  gap
+  out
+}
+
+#' Convert a bar-width string ("1 hour", "15 min") to seconds.
+freq_seconds <- function(freq) {
+  if (is.numeric(freq)) {
+    return(as.numeric(freq))
+  }
+
+  parts <- strsplit(trimws(freq), "[[:space:]]+")[[1]]
+  count <- if (length(parts) >= 2) suppressWarnings(as.numeric(parts[1])) else 1
+  if (is.na(count) || count <= 0) {
+    stop(sprintf("cannot parse a bar width from %s", freq))
+  }
+
+  unit <- sub("s$", "", tolower(parts[length(parts)]))
+  multiplier <- switch(
+    unit,
+    sec = 1, second = 1,
+    min = 60, minute = 60,
+    hour = 3600,
+    day = 86400,
+    week = 604800,
+    stop(sprintf("unsupported bar-width unit: %s", unit))
+  )
+
+  count * multiplier
 }
 
 #' Cross-correlation of signal against price across a range of lags.

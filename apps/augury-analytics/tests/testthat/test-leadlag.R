@@ -128,6 +128,36 @@ test_that("FDR keeps a genuinely strong finding", {
   expect_false(any(vapply(corrected[-1], function(r) r$significant, logical(1))))
 })
 
+test_that("complete data aligns one-for-one", {
+  # The lower bound matters: an earlier version of this test asserted only
+  # `expect_lte(nrow, 4)`, which passed vacuously when a timezone bug made the
+  # join drop every row. A bound in one direction is not a test.
+  base <- as.POSIXct("2026-07-01 00:00:00", tz = "UTC")
+  n <- 50
+  signals <- data.frame(ts = base + 3600 * (0:(n - 1)), s_t = seq(-1, 1, length.out = n))
+  prices <- data.frame(ts = base + 3600 * (0:(n - 1)), yes_price = seq(0.2, 0.8, length.out = n))
+
+  aligned <- align_on_grid(signals, prices)
+
+  expect_equal(nrow(aligned), n)
+  expect_equal(aligned$signal[1], -1)
+  expect_equal(aligned$price[1], 0.2)
+  expect_false(any(is.na(aligned$signal)))
+})
+
+test_that("alignment is timezone-safe", {
+  # Bucketing via cut() reinterprets wall-clock labels in the local zone and
+  # shifts every timestamp by the UTC offset.
+  base <- as.POSIXct("2026-07-01 00:00:00", tz = "UTC")
+  signals <- data.frame(ts = base + 3600 * (0:23), s_t = rep(0.5, 24))
+  prices <- data.frame(ts = base + 3600 * (0:23), yes_price = rep(0.4, 24))
+
+  aligned <- align_on_grid(signals, prices)
+
+  expect_equal(nrow(aligned), 24)
+  expect_equal(as.numeric(aligned$ts[1]), as.numeric(base))
+})
+
 test_that("alignment drops bars rather than bridging a long gap", {
   base <- as.POSIXct("2026-07-01 00:00:00", tz = "UTC")
 
@@ -139,5 +169,23 @@ test_that("alignment drops bars rather than bridging a long gap", {
   )
 
   aligned <- align_on_grid(signals, prices, max_fill_bars = 1)
-  expect_lte(nrow(aligned), 4)
+
+  # Bars 0 and 1 are real, bar 2 is one carry-forward, bar 10 is real.
+  # Bars 3..9 exceed the fill limit and must be dropped.
+  expect_equal(nrow(aligned), 4)
+  expect_equal(as.numeric(aligned$ts), as.numeric(base + 3600 * c(0, 1, 2, 10)))
+})
+
+test_that("carry_forward respects its limit", {
+  expect_equal(carry_forward(c(1, NA, NA, 4), 1), c(1, 1, NA, 4))
+  expect_equal(carry_forward(c(1, NA, NA, 4), 2), c(1, 1, 1, 4))
+  expect_equal(carry_forward(c(NA, 2, NA), 1), c(NA, 2, 2))
+})
+
+test_that("freq_seconds parses bar widths", {
+  expect_equal(freq_seconds("1 hour"), 3600)
+  expect_equal(freq_seconds("15 min"), 900)
+  expect_equal(freq_seconds("1 day"), 86400)
+  expect_equal(freq_seconds(1800), 1800)
+  expect_error(freq_seconds("1 fortnight"), "unsupported")
 })
