@@ -180,15 +180,11 @@ impl PostFilter {
         None
     }
 
-    /// Classify one post, returning it annotated with a verdict and signature.
-    pub fn apply(&self, post: Post) -> Post {
-        // `apply` takes &self for clarity in tests; the stateful path is
-        // `apply_mut`, which is what the ingest loop uses.
-        let mut clone = Self::new(self.config.clone());
-        clone.apply_mut(post)
-    }
-
     /// Classify one post and update the duplicate window.
+    ///
+    /// Necessarily `&mut`: duplicate detection is stateful, and a variant that
+    /// took `&self` could only work by throwing that state away — which would
+    /// silently disable the filter's whole reason for existing.
     pub fn apply_mut(&mut self, mut post: Post) -> Post {
         // Always compute the signature, even for posts rejected on heuristics,
         // so a rejected post can still be compared against later.
