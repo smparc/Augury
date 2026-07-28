@@ -9,7 +9,7 @@ rediscovered.
 | Service | Language | Status | Verified by |
 |---|---|---|---|
 | `augury-signal` | Python 3.12 | **Builds and runs** | 139 pytest tests, ruff clean, live end-to-end slice |
-| `augury-api` | Java 21 | **Builds and tests** | 9 JUnit tests, `BUILD SUCCESS` |
+| `augury-api` | Java 25 | **Blocked — JDK version** | 9 JUnit tests passed under JDK 21, before `pom.xml` was raised to 25 |
 | `augury-analytics` | R 4.6 | **Builds and tests** | 40 testthat tests |
 | `augury-ingest` | Rust 1.97 | **Blocked — see Smart App Control** | not compiled |
 | `augury-engine` | C++20 | **Blocked — no compiler installed** | not compiled |
@@ -88,7 +88,41 @@ required once a compiler exists.
 Note that even with a compiler, running `ctest` produces freshly built unsigned
 executables and will hit Blocker 1.
 
-## Blocker 3 — Docker needs WSL2
+## Blocker 3 — `pom.xml` targets a newer JDK than is installed
+
+`mvn clean test` fails at compile:
+
+```
+[ERROR] Fatal error compiling: error: release version 25 not supported
+```
+
+`apps/augury-api/pom.xml` sets `<java.version>25</java.version>`, which Spring Boot's
+parent POM turns into `maven.compiler.release=25`. Only JDK 21 is installed here
+(`C:\Program Files\Microsoft\jdk-21.0.11.10-hotspot`), and `release` is a hard
+floor — javac will not emit bytecode for a version it does not know.
+
+Worth noting because it is easy to be fooled: a *non-clean* `mvn test` still
+reports `BUILD SUCCESS`, because maven-compiler-plugin skips recompiling
+unchanged sources and the pre-existing class files were built under 21. Only
+`mvn clean test` exposes the problem. Any version check should use `clean`.
+
+Two fixes, either is fine:
+
+```powershell
+# Install a matching JDK
+winget install Microsoft.OpenJDK.25
+```
+
+or lower the target — nothing in the service uses a language feature past 21
+(records, text blocks, pattern matching for `instanceof`):
+
+```xml
+<properties>
+    <java.version>21</java.version>
+</properties>
+```
+
+## Blocker 4 — Docker needs WSL2
 
 Docker Desktop requires the WSL2 backend, and the WSL feature is disabled:
 

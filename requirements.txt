@@ -1,32 +1,67 @@
-# --- Core Data & Computation ---
-polars>=0.20.0           # High-performance dataframe manipulation
-numpy>=1.26.0            # Array operations and math
-pandas>=2.2.0            # Fallback dataframes (required by some ML libraries)
+# Augury — Python dependencies for `apps/augury-signal`.
+#
+# `apps/augury-signal/pyproject.toml` is the authoritative source; this file
+# mirrors its core dependency set for `pip install -r requirements.txt` and for
+# tooling that expects a requirements file. If the two disagree, pyproject wins.
+#
+# Preferred setup — uv provisions the interpreter as well as the environment:
+#
+#     cd apps/augury-signal
+#     uv venv --python 3.12
+#     uv pip install -e ".[dev]"
+#
+# Python 3.12 specifically. 3.13+ runs ahead of torch/dagster wheel
+# availability, and 3.11 is the floor for the `datetime.UTC` and `StrEnum`
+# usage in the package, so the pin is `>=3.11,<3.13`.
 
-# --- NLP & Machine Learning (DeBERTa & Baseline) ---
-torch>=2.2.0             # PyTorch backend for Transformers
-transformers>=4.37.0     # Hugging Face models (DeBERTa-v3)
-accelerate>=0.27.0       # Memory efficient model loading
-vaderSentiment>=3.3.2    # Lightweight lexicon baseline for the Phase 1 prototype
+# --- Core data & computation -------------------------------------------------
+numpy>=1.26.0            # Array math behind the S(t) and calibration routines
+pandas>=2.2.0            # Time-series alignment and the lead-lag grid
+scipy>=1.12.0            # Distributions and optimization helpers
+statsmodels>=0.14.0      # ADF, VAR lag selection, Granger F-test, Benjamini-Hochberg
+
+# --- NLP & machine learning (baseline; see [nlp] extra for DeBERTa) ----------
+vaderSentiment>=3.3.2    # Lexicon baseline and the ensemble's second opinion
 rapidfuzz>=3.6.0         # Alias/misspelling matching for market-to-query mapping (enhancement 5)
 
-# --- Database & Caching ---
-psycopg2-binary>=2.9.9   # TimescaleDB/Postgres driver - augury-signal reads post history, writes price series
-redis>=5.0.0             # Publishes stance signal S(t) to augury-engine/augury-api - already provisioned in docker/
+# --- Database, cache & contracts ---------------------------------------------
+psycopg[binary]>=3.1.0   # TimescaleDB driver. psycopg 3, not psycopg2 — the code
+                         # uses the v3 connection/cursor API and `dict_row`.
+redis>=5.0.0             # Publishes S(t) and sim ticks to augury-engine / augury-api
+jsonschema>=4.21.0       # Validates messages against schemas/ at the publisher
 
-# --- Orchestration & Pipelines ---
-dagster>=1.6.0           # Data pipeline orchestrator
-dagster-webserver>=1.6.0 # Dagster UI
+# --- API clients & configuration ---------------------------------------------
+requests>=2.31.0         # Kalshi, Polymarket, and X REST clients
+PyYAML>=6.0              # config/markets.yaml
+python-dotenv>=1.0.1     # .env loading
 
-# --- API Clients & Network ---
-requests>=2.31.0         # REST API polling (Kalshi/Polymarket)
-websockets>=12.0         # For real-time market data streaming
-python-dotenv>=1.0.1     # Environment variable management (.env)
+# -----------------------------------------------------------------------------
+# Optional extras, deliberately not installed by default so the vertical slice
+# and its test suite stay quick to set up: the core above is tens of megabytes,
+# while the NLP stack alone is several hundred.
+#
+#   uv pip install -e ".[nlp]"            target-conditioned DeBERTa stance
+#   uv pip install -e ".[orchestration]"  Dagster asset graph and UI
+#   uv pip install -e ".[dev]"            pytest, ruff
+#   uv pip install -e ".[viz]"            matplotlib, seaborn, jupyter
+# -----------------------------------------------------------------------------
 
-# --- Testing ---
-pytest>=8.0.0            # Unit tests for augury-signal (see Testing section in README)
+# [nlp] — Stage 4 target-conditioned stance classification
+# torch>=2.2.0
+# transformers>=4.37.0
+# accelerate>=0.27.0
+# sentencepiece>=0.2.0   # Required by the DeBERTa-v3 tokenizer
 
-# --- Prototyping & Visualization (Phase 1) ---
-jupyter>=1.0.0           # Notebook environment for the end-to-end prototype
-matplotlib>=3.8.0        # Core plotting
-seaborn>=0.13.2          # Statistical data visualization (lead-lag plots)
+# [orchestration] — Stage 4 pipeline scheduling
+# dagster>=1.6.0
+# dagster-webserver>=1.6.0
+
+# [dev] — tests and linting
+# pytest>=8.0.0
+# pytest-cov>=4.1.0
+# ruff>=0.3.0
+
+# [viz] — the Phase 1 prototype notebook and ad-hoc plotting
+# matplotlib>=3.8.0
+# seaborn>=0.13.2
+# jupyter>=1.0.0
