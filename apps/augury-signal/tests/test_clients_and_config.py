@@ -114,8 +114,19 @@ class TestFixtureBackend:
         span = posts[-1].created_at - posts[0].created_at
         assert timedelta(hours=40) < span < timedelta(hours=60)
 
-    def test_unknown_market_returns_nothing(self):
-        assert FixtureXBackend(self.fixtures_dir).search("q", "kalshi:NOPE") == []
+    def test_unknown_market_falls_back_to_default(self):
+        """A market with no fixture of its own is served by default.jsonl.
+
+        That fallback is what lets a newly added market exercise the pipeline
+        before anyone records data for it.
+        """
+        posts = FixtureXBackend(self.fixtures_dir).search("q", "kalshi:NOPE")
+        assert posts
+        assert all(p.market_id == "kalshi:NOPE" for p in posts)
+
+    def test_missing_fixtures_directory_returns_nothing(self, tmp_path):
+        """With no fixtures at all there is nothing to replay — and no error."""
+        assert FixtureXBackend(tmp_path / "absent").search("q", "kalshi:ANY") == []
 
     def test_max_results_returns_the_newest(self):
         backend = FixtureXBackend(self.fixtures_dir)

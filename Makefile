@@ -16,6 +16,13 @@ ifeq ($(OS),Windows_NT)
 VENV_PY     := $(VENV)/Scripts/python
 endif
 
+# Toolchains installed per-user are not on PATH in a fresh shell. Override any
+# of these on the command line, e.g. `make test-java MVN=/usr/bin/mvn`.
+# See docs/BUILD.md for where each one lives on this machine.
+MVN         ?= mvn
+RSCRIPT     ?= Rscript
+CARGO       ?= cargo
+
 # Loaded by recipes that need DB credentials; see .env.example.
 ENV_FILE    := $(ROOT)/.env
 

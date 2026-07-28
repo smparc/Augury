@@ -140,11 +140,13 @@ align_on_grid <- function(signals, prices, freq = "1 hour", max_fill_bars = 1,
       gap_signal = cumulative_gap(.data$had_signal),
       gap_price = cumulative_gap(.data$had_price)
     ) %>%
-    filter(
+    dplyr::filter(
       !is.na(.data$signal), !is.na(.data$price),
       .data$gap_signal <= max_fill_bars, .data$gap_price <= max_fill_bars
     ) %>%
-    select("ts", "signal", "price")
+    # Explicitly namespaced: `vars` loads MASS, whose `select()` masks dplyr's
+    # and takes a single argument, so an unqualified call fails here.
+    dplyr::select("ts", "signal", "price")
 }
 
 #' Bars since the last real observation, for the fill-limit check.
