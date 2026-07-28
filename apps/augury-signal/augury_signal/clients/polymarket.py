@@ -23,7 +23,7 @@ Several Gamma fields arrive as JSON-encoded *strings* rather than arrays
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from ..models import (
@@ -191,14 +191,14 @@ class PolymarketClient:
 
         return PriceTick(
             market_id=market_id(Venue.POLYMARKET, condition_id),
-            ts=datetime.now(timezone.utc),
+            ts=datetime.now(UTC),
             source=PriceSource.BOOK,
             yes_price=mid,
             yes_bid=bid,
             yes_ask=ask,
             spread=spread,
             volume=parse_money(raw.get("volumeNum")),
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
         )
 
     def get_orderbook(self, condition_id: str, *, token_id: str | None = None) -> PriceTick:
@@ -244,7 +244,7 @@ class PolymarketClient:
 
         return PriceTick(
             market_id=market_id(Venue.POLYMARKET, condition_id),
-            ts=datetime.now(timezone.utc),
+            ts=datetime.now(UTC),
             source=PriceSource.BOOK,
             yes_price=mid,
             yes_bid=bid_price,
@@ -252,7 +252,7 @@ class PolymarketClient:
             spread=spread,
             depth_bid=bid_size,
             depth_ask=ask_size,
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
         )
 
     def get_price_history(
@@ -278,7 +278,7 @@ class PolymarketClient:
         )
 
         mid = market_id(Venue.POLYMARKET, condition_id)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         ticks: list[PriceTick] = []
 
         for point in payload.get("history", []):
@@ -289,7 +289,7 @@ class PolymarketClient:
             ticks.append(
                 PriceTick(
                     market_id=mid,
-                    ts=datetime.fromtimestamp(int(ts), tz=timezone.utc),
+                    ts=datetime.fromtimestamp(int(ts), tz=UTC),
                     source=PriceSource.CANDLE,
                     yes_price=price,
                     fetched_at=now,

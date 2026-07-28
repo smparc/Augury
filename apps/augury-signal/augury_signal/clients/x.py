@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterator, Sequence
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -57,7 +57,7 @@ def _parse_ts(value: Any) -> datetime | None:
     if not value:
         return None
     if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
     if isinstance(value, str):
         try:
             return datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -141,7 +141,7 @@ class FixtureXBackend:
         offset = timedelta(0)
         if self.anchor_to_now:
             newest = max(created for created, _ in parsed)
-            offset = datetime.now(timezone.utc) - newest
+            offset = datetime.now(UTC) - newest
 
         posts: list[Post] = []
         for created, record in parsed:
@@ -159,7 +159,7 @@ class FixtureXBackend:
                     followers=int(record.get("followers") or 0),
                     engagements=int(record.get("engagements") or 0),
                     lang=record.get("lang"),
-                    ingested_at=datetime.now(timezone.utc),
+                    ingested_at=datetime.now(UTC),
                     filter_verdict=FilterVerdict(record.get("filter_verdict", "accepted")),
                     filter_reason=record.get("filter_reason"),
                     source="fixture",
@@ -214,7 +214,7 @@ class LiveXBackend:
             "user.fields": "public_metrics,created_at",
         }
         if start_time is not None:
-            params["start_time"] = start_time.astimezone(timezone.utc).strftime(
+            params["start_time"] = start_time.astimezone(UTC).strftime(
                 "%Y-%m-%dT%H:%M:%SZ"
             )
 
@@ -232,7 +232,7 @@ class LiveXBackend:
         }
 
         posts: list[Post] = []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         for raw in raw_posts:
             created = _parse_ts(raw.get("created_at"))

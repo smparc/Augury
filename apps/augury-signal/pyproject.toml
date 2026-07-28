@@ -67,7 +67,10 @@ markers = [
 addopts = "-m 'not live and not db' --strict-markers"
 
 [tool.ruff]
-line-length = 100
+# 110 rather than 88/100: the math modules carry long explanatory comments and
+# the golden-vector tables are wide data literals. Reflowing those hurts more
+# than it helps.
+line-length = 110
 target-version = "py312"
 
 [tool.ruff.lint]

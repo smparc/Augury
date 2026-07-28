@@ -8,7 +8,7 @@ import pytest
 
 from augury_signal.analytics.scoring import brier_score, brier_skill_score, score_market
 from augury_signal.models import Calibration
-from augury_signal.signal.calibration import PlattParams, fit_platt, logit, sigmoid, to_probability
+from augury_signal.signal.calibration import fit_platt, logit, sigmoid, to_probability
 
 
 class TestAffine:

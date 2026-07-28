@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -16,7 +16,7 @@ from augury_signal.signal.decay import (
     post_weight,
 )
 
-NOW = datetime(2026, 7, 27, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 7, 27, 12, 0, 0, tzinfo=UTC)
 SIX_HOURS = 6 * 3600.0
 
 

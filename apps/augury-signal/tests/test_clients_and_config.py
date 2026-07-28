@@ -7,7 +7,7 @@ the failure mode they guard against costs real money.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -106,7 +106,7 @@ class TestFixtureBackend:
         backend = FixtureXBackend(self.fixtures_dir, anchor_to_now=True)
         posts = backend.search("q", "kalshi:KXFEDDECISION-26JUL-C25")
         newest = max(p.created_at for p in posts)
-        assert datetime.now(timezone.utc) - newest < timedelta(minutes=1)
+        assert datetime.now(UTC) - newest < timedelta(minutes=1)
 
     def test_anchoring_preserves_relative_spacing(self):
         backend = FixtureXBackend(self.fixtures_dir, anchor_to_now=True)

@@ -13,7 +13,7 @@ still holds; its `yes_bid`/`yes_ask` top-level names do not.
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from ..models import (
@@ -150,7 +150,7 @@ class KalshiClient:
         if lookback_days <= 0:
             raise ValueError(f"lookback_days must be positive, got {lookback_days}")
 
-        end_dt = end or datetime.now(timezone.utc)
+        end_dt = end or datetime.now(UTC)
         end_ts = int(end_dt.timestamp())
         start_ts = int((end_dt - timedelta(days=lookback_days)).timestamp())
 
@@ -182,14 +182,14 @@ class KalshiClient:
             ticks.append(
                 PriceTick(
                     market_id=mid,
-                    ts=datetime.fromtimestamp(int(ts), tz=timezone.utc),
+                    ts=datetime.fromtimestamp(int(ts), tz=UTC),
                     source=PriceSource.CANDLE,
                     yes_price=yes_price,
                     yes_bid=yes_bid,
                     yes_ask=yes_ask,
                     spread=spread,
                     volume=parse_money(candle.get("volume_fp")),
-                    fetched_at=datetime.now(timezone.utc),
+                    fetched_at=datetime.now(UTC),
                 )
             )
 
@@ -243,7 +243,7 @@ class KalshiClient:
 
         return PriceTick(
             market_id=market_id(Venue.KALSHI, ticker),
-            ts=datetime.now(timezone.utc),
+            ts=datetime.now(UTC),
             source=PriceSource.BOOK,
             yes_price=mid_price,
             yes_bid=yes_bid,
@@ -251,7 +251,7 @@ class KalshiClient:
             spread=spread,
             depth_bid=yes_bid_size,
             depth_ask=depth_ask,
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
         )
 
     def poll_orderbooks(

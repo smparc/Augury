@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -17,7 +17,7 @@ from augury_signal.analytics.leadlag import (
     stationarity,
 )
 
-START = datetime(2026, 7, 1, tzinfo=timezone.utc)
+START = datetime(2026, 7, 1, tzinfo=UTC)
 
 
 def _frame(values, col, start=START, step_hours=1):

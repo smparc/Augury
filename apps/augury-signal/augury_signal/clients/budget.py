@@ -24,7 +24,7 @@ import json
 import os
 import tempfile
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 
@@ -47,7 +47,7 @@ class ReadBudget:
 
     @staticmethod
     def _today() -> str:
-        return datetime.now(timezone.utc).date().isoformat()
+        return datetime.now(UTC).date().isoformat()
 
     def _load(self) -> dict[str, int]:
         if not self.path.exists():
