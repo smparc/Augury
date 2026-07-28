@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: augury-api
+
+  datasource:
+    # Reads the same variables as the Python and Rust services; see .env.example.
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:augury}
+    username: ${POSTGRES_USER:augury}
+    password: ${POSTGRES_PASSWORD:augury_local_dev}
+    hikari:
+      # Small pool on purpose: every query is offloaded to the bounded-elastic
+      # scheduler, and a large pool would just move contention into Postgres.
+      maximum-pool-size: 10
+      connection-timeout: 10000
+      pool-name: augury-pool
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 5s
+
+server:
+  port: ${AUGURY_API_PORT:8080}
+
+augury:
+  paper:
+    # Position cap in shares. A full-disagreement signal sizes to exactly this.
+    max-position-shares: 100.0
+    strategy: signal_v1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /docs
+
+logging:
+  level:
+    com.augury: ${LOG_LEVEL:info}
+    org.springframework.r2dbc: warn
