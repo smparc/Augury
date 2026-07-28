@@ -1,0 +1,313 @@
+---
+title: "Augury — Lead-Lag Analysis"
+subtitle: "Does social stance carry information about prediction-market prices?"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    embed-resources: true
+    theme: cosmo
+execute:
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+for (file in list.files(file.path("..", "R"), pattern = "\\.R$", full.names = TRUE)) {
+  source(file)
+}
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+MODEL_VERSION <- Sys.getenv("AUGURY_MODEL_VERSION", "vader-3.3.2")
+ALPHA <- 0.05
+RUN_ID <- format(Sys.time(), "%Y%m%dT%H%M%SZ")
+```
+
+## What this report claims, and what it does not
+
+This is a **calibration and causality audit**, not a trading recommendation. It
+asks one question — does the social signal `S(t)` tell us anything about where a
+prediction-market price goes next that the price's own history does not already
+tell us — and reports the answer including when that answer is "no".
+
+Three guards are applied to everything below, because without them the analysis
+would reliably manufacture findings:
+
+- **Logit transform.** Prices are bounded in $[0,1]$. A market at 0.03 cannot
+  fall much further, so its innovations are asymmetric and its level is
+  near-certainly non-stationary in the sense the Granger test assumes.
+- **Stationarity is tested, not assumed.** An ADF result travels with every
+  test. Granger causality between two integrated series produces impressive
+  p-values from spurious regression alone.
+- **Multiple comparisons.** Testing dozens of markets at $p < 0.05$ yields
+  roughly one "significant" result per twenty from chance. Every p-value here is
+  Benjamini-Hochberg corrected **across the whole batch**, and significance is
+  defined off the adjusted value only.
+
+```{r connect}
+#| include: false
+db_available <- augury_available()
+```
+
+```{r no-db}
+#| eval: !expr "!db_available"
+#| results: asis
+cat("::: {.callout-warning}\n")
+cat("## Database unavailable\n\n")
+cat("Could not connect to TimescaleDB, so this report has no data to analyze.\n\n")
+cat("Start the stack and populate it:\n\n")
+cat("```\nmake up && make db-migrate\naugury sync-config && augury refresh\n```\n")
+cat(":::\n")
+```
+
+```{r load}
+#| eval: !expr db_available
+#| include: false
+connection <- augury_connect()
+markets <- fetch_markets(connection)
+
+market_data <- list()
+market_meta <- list()
+
+for (i in seq_len(nrow(markets))) {
+  market_id <- markets$market_id[i]
+
+  signals <- fetch_signals(connection, market_id, MODEL_VERSION)
+  prices <- fetch_prices(connection, market_id)
+
+  if (nrow(signals) == 0 || nrow(prices) == 0) next
+
+  aligned <- align_on_grid(
+    signals %>% select(ts, s_t),
+    prices %>% select(ts, mid),
+    price_col = "mid"
+  )
+
+  if (nrow(aligned) < 20) next
+
+  market_data[[market_id]] <- aligned
+  market_meta[[market_id]] <- markets[i, ]
+}
+```
+
+```{r analyze}
+#| eval: !expr db_available
+#| include: false
+results <- if (length(market_data) > 0) {
+  analyze_markets(market_data, alpha = ALPHA)
+} else {
+  list()
+}
+results_frame <- results_to_frame(results)
+```
+
+## Coverage
+
+```{r coverage}
+#| eval: !expr db_available
+tibble::tibble(
+  Metric = c(
+    "Tracked markets",
+    "Markets with enough aligned history",
+    "Model version",
+    "Minimum observations required"
+  ),
+  Value = c(
+    nrow(markets),
+    length(market_data),
+    MODEL_VERSION,
+    "20 aligned hourly bars"
+  )
+) %>% kable()
+```
+
+```{r insufficient}
+#| eval: !expr "db_available && length(market_data) == 0"
+#| results: asis
+cat("::: {.callout-important}\n")
+cat("## Not enough history yet\n\n")
+cat("No market has 20 aligned hourly observations of both signal and price.\n")
+cat("Granger causality on less than that is not interpretable, so no test was run.\n\n")
+cat("Let `augury-ingest` accumulate data for a few days and re-render.\n")
+cat(":::\n")
+```
+
+## Granger causality: does the signal lead price?
+
+```{r granger-table}
+#| eval: !expr "db_available && length(market_data) > 0"
+results_frame %>%
+  select(
+    Market = market_id,
+    Lag = lag_order,
+    N = n_obs,
+    F = f_statistic,
+    `p (raw)` = p_value,
+    `p (FDR)` = p_value_adj,
+    Significant = significant,
+    `ADF signal` = adf_p_signal,
+    `ADF price` = adf_p_price
+  ) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 4))) %>%
+  arrange(`p (FDR)`) %>%
+  kable(caption = paste0(
+    "Signal -> price. Significance is FDR-corrected at alpha = ", ALPHA,
+    ". ADF p-values below 0.05 indicate a stationary (testable) series."
+  ))
+```
+
+```{r verdict}
+#| eval: !expr "db_available && length(market_data) > 0"
+#| results: asis
+n_significant <- sum(results_frame$significant, na.rm = TRUE)
+n_tested <- nrow(results_frame)
+n_nonstationary <- sum(
+  results_frame$adf_p_signal >= 0.05 | results_frame$adf_p_price >= 0.05,
+  na.rm = TRUE
+)
+
+if (n_significant == 0) {
+  cat("::: {.callout-note}\n")
+  cat("## Verdict: no evidence that the signal leads price\n\n")
+  cat(sprintf(
+    "Across %d market(s), none survived FDR correction at alpha = %.2f.\n\n",
+    n_tested, ALPHA
+  ))
+  cat("This is a legitimate and informative result. It is consistent with the ")
+  cat("markets being efficient with respect to public social sentiment — which ")
+  cat("is what one should expect from a liquid market, and is precisely the ")
+  cat("hypothesis this project was built to test rather than to confirm.\n")
+  cat(":::\n")
+} else {
+  cat("::: {.callout-important}\n")
+  cat(sprintf("## %d of %d market(s) show a significant lead\n\n", n_significant, n_tested))
+  cat("Before treating this as real, check each of the following:\n\n")
+  cat("- Does the ADF column show both series were stationary? If not, the ")
+  cat("result may be spurious regression.\n")
+  cat("- Is `N` large enough that the lag order was identifiable?\n")
+  cat("- Is the effect present on the market's *quiet* periods, or only around ")
+  cat("one news event that moved sentiment and price simultaneously?\n")
+  cat("- Would it survive out of sample, on markets not used to choose the ")
+  cat("specification?\n")
+  cat(":::\n")
+}
+
+if (n_nonstationary > 0) {
+  cat("\n::: {.callout-warning}\n")
+  cat(sprintf(
+    "%d market(s) had at least one non-stationary series (ADF p >= 0.05). Treat their p-values with suspicion.\n",
+    n_nonstationary
+  ))
+  cat(":::\n")
+}
+```
+
+## Reverse direction: does price lead the signal?
+
+A signal that merely *follows* price is the null result worth being able to
+report. If the reverse direction is stronger than the forward one, the pipeline
+is measuring people reacting to prices they have already seen.
+
+```{r reverse}
+#| eval: !expr "db_available && length(market_data) > 0"
+reverse_results <- list()
+for (market_id in names(market_data)) {
+  data <- market_data[[market_id]]
+  outcome <- tryCatch(
+    {
+      test <- granger_test(data$signal, data$price, direction = "price_to_signal")
+      test$market_id <- market_id
+      test
+    },
+    error = function(e) NULL
+  )
+  if (!is.null(outcome)) reverse_results[[market_id]] <- outcome
+}
+
+reverse_frame <- results_to_frame(apply_fdr_correction(reverse_results, alpha = ALPHA))
+
+if (nrow(reverse_frame) > 0) {
+  reverse_frame %>%
+    select(Market = market_id, Lag = lag_order, N = n_obs,
+           F = f_statistic, `p (FDR)` = p_value_adj, Significant = significant) %>%
+    mutate(across(where(is.numeric), ~ round(.x, 4))) %>%
+    arrange(`p (FDR)`) %>%
+    kable(caption = "Price -> signal, FDR-corrected.")
+}
+```
+
+## Per-market detail
+
+```{r per-market}
+#| eval: !expr "db_available && length(market_data) > 0"
+#| results: asis
+#| fig-width: 9
+#| fig-height: 4
+for (market_id in names(market_data)) {
+  aligned <- market_data[[market_id]]
+  meta <- market_meta[[market_id]]
+
+  cat("\n\n### ", market_id, "\n\n")
+  cat(meta$title, "\n\n")
+
+  print(plot_signal_vs_price(aligned, title = market_id))
+
+  ccf_table <- cross_correlation(aligned$signal, aligned$price, max_lag = 12)
+  print(plot_cross_correlation(ccf_table))
+}
+```
+
+## Calibration
+
+```{r calibration}
+#| eval: !expr db_available
+#| results: asis
+scores <- fetch_scores(connection)
+
+if (nrow(scores) == 0) {
+  cat("::: {.callout-note}\n")
+  cat("No markets have resolved yet, so no Brier scores exist.\n\n")
+  cat("A Brier Skill Score can only be computed against a realized outcome; ")
+  cat("until a tracked market settles, calibration is unmeasurable.\n")
+  cat(":::\n")
+} else {
+  print(
+    scores %>%
+      select(Market = market_id, Model = model_version, N = n_obs,
+             Calibration = calibration, `BS signal` = brier_signal,
+             `BS market` = brier_market, BSS = bss, Outcome = resolved_outcome) %>%
+      mutate(across(where(is.numeric), ~ round(.x, 4))) %>%
+      kable(caption = "BSS > 0 means the signal beat the market's own price as a forecast.")
+  )
+}
+```
+
+```{r write-back}
+#| eval: !expr "db_available && length(market_data) > 0"
+#| include: false
+write_granger_results(connection, results_frame, RUN_ID, MODEL_VERSION)
+```
+
+```{r disconnect}
+#| eval: !expr db_available
+#| include: false
+DBI::dbDisconnect(connection)
+```
+
+## Reading this correctly
+
+A significant Granger result means the signal's history improves a linear
+forecast of price beyond price's own history, on this sample, under this
+specification. It does **not** establish a causal mechanism, and it is not
+tradable on its own: it says nothing about transaction costs, about the spread
+that would be crossed to act on it, or about whether the relationship persists
+once anyone does.
+
+The more likely outcome for a liquid market is no relationship at all. That
+result is worth having, and this report is built to state it plainly rather than
+to search for a specification that avoids it.
