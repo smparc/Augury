@@ -166,24 +166,35 @@ def _lmsr_vectors() -> dict[str, Any]:
 
 
 def _adaptive_vectors() -> list[dict[str, Any]]:
-    scenarios = [
-        {"name": "quiet", "recent_post_count": 5.0, "baseline_post_rate": 5.0, "recent_price_move": 0.0},
-        {"name": "volume_surge", "recent_post_count": 90.0, "baseline_post_rate": 5.0, "recent_price_move": 0.0},
-        {"name": "price_shock", "recent_post_count": 0.0, "baseline_post_rate": 5.0, "recent_price_move": 0.20},
-        {"name": "both", "recent_post_count": 60.0, "baseline_post_rate": 5.0, "recent_price_move": 0.30},
-        {"name": "floored", "recent_post_count": 100000.0, "baseline_post_rate": 1.0, "recent_price_move": 0.9},
+    # (name, recent_post_count, baseline_post_rate, recent_price_move)
+    scenarios: list[tuple[str, float, float, float]] = [
+        ("quiet", 5.0, 5.0, 0.0),
+        ("volume_surge", 90.0, 5.0, 0.0),
+        ("price_shock", 0.0, 5.0, 0.20),
+        ("both", 60.0, 5.0, 0.30),
+        ("floored", 100_000.0, 1.0, 0.9),
     ]
-    for case in scenarios:
-        case["base_half_life_seconds"] = 21600.0
-        case["min_half_life_seconds"] = 1800.0
-        case["expected_half_life_seconds"] = effective_half_life(
-            21600.0,
-            min_half_life_seconds=1800.0,
-            recent_post_count=case["recent_post_count"],
-            baseline_post_rate=case["baseline_post_rate"],
-            recent_price_move=case["recent_price_move"],
+
+    cases: list[dict[str, Any]] = []
+    for name, post_count, baseline, price_move in scenarios:
+        cases.append(
+            {
+                "name": name,
+                "recent_post_count": post_count,
+                "baseline_post_rate": baseline,
+                "recent_price_move": price_move,
+                "base_half_life_seconds": 21600.0,
+                "min_half_life_seconds": 1800.0,
+                "expected_half_life_seconds": effective_half_life(
+                    21600.0,
+                    min_half_life_seconds=1800.0,
+                    recent_post_count=post_count,
+                    baseline_post_rate=baseline,
+                    recent_price_move=price_move,
+                ),
+            }
         )
-    return scenarios
+    return cases
 
 
 def _calibration_vectors() -> dict[str, Any]:
