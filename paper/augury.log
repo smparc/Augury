@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.7.28)  28 JUL 2026 21:35
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.7.28)  28 JUL 2026 21:42
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1151,31 +1151,36 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 [3{C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathex.en
 c}] [4] [5]
 Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on in
-put line 440.
+put line 443.
 Package microtype Info: Character `029' is missing
 (microtype)             in font `T1/lmr/m/sc/10.95'.
 (microtype)             Ignoring protrusion settings for this character.
  [6] [7] [8]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 629.
+(hyperref)                removing `math shift' on input line 632.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 629.
+(hyperref)                removing `math shift' on input line 632.
 
 [9] [10] [11] [12] [13] [14]
-Underfull \hbox (badness 10000) in paragraph at lines 1034--1034
+Underfull \hbox (badness 10000) in paragraph at lines 1037--1037
 []\T1/lmr/m/n/10 (+20) Java
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1044--1045
+Underfull \hbox (badness 10000) in paragraph at lines 1041--1041
+[]\T1/lmr/m/n/10 (+20) Rust \T1/lmtt/m/n/10 ReadBudget::
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1047--1048
 []\T1/lmr/m/n/10 (+20) Five miss-ing stan-dard head-ers
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1044--1045
+Underfull \hbox (badness 10000) in paragraph at lines 1047--1048
 \T1/lmr/m/n/10 (+20) (\T1/lmtt/m/n/10 <cstdint>\T1/lmr/m/n/10 (+20) , \T1/lmtt/
 m/n/10 <limits>\T1/lmr/m/n/10 (+20) , \T1/lmtt/m/n/10 <string>\T1/lmr/m/n/10 (+
 20) ,
@@ -1190,11 +1195,11 @@ Package rerunfilecheck Info: File `augury.out' has not changed.
 (rerunfilecheck)             Checksum: 93191F6AA6140C1EE7DDF984A338326F;5126.
  ) 
 Here is how much of TeX's memory you used:
- 38344 strings out of 467871
- 861491 string characters out of 5418376
- 1494566 words of memory out of 5000000
+ 38346 strings out of 467871
+ 861513 string characters out of 5418376
+ 1490921 words of memory out of 5000000
  66171 multiletter control sequences out of 15000+600000
- 768487 words of font info for 300 fonts, out of 8000000 for 9000
+ 768570 words of font info for 301 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  84i,19n,94p,1005b,2223s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx10.pf
@@ -1222,7 +1227,7 @@ r/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy8.pfb><C:/Users/smpar
 /AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy9.pfb><C:/Users/smpar/
 AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt10.pfb><C:/Users/smpar/
 AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt9.pfb>
-Output written on augury.pdf (18 pages, 605740 bytes).
+Output written on augury.pdf (18 pages, 605902 bytes).
 PDF statistics:
  465 PDF objects out of 1000 (max. 8388607)
  100 named destinations out of 1000 (max. 500000)

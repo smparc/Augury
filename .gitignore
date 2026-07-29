@@ -56,3 +56,12 @@ data/interim/
 *.swp
 .DS_Store
 Thumbs.db
+
+# LaTeX build artifacts (keep paper/*.tex and the built paper/*.pdf)
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.toc
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz

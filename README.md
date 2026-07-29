@@ -9,12 +9,10 @@
 
 *Augury* is a quantitative pipeline designed to test whether social media sentiment leads or lags real-world prediction markets. It continuously streams and filters live posts from X (Twitter), processes the raw text into time-decayed stance probabilities, and maps those social signals against live order-book shifts from Polymarket and Kalshi to evaluate information efficiency.
 
-Beyond simple observation, the system operates in two distinct modes. The statistical core evaluates Granger causality to see if social momentum actually predicts market movement, while a high-performance synthetic market engine uses Hanson's Logarithmic Market Scoring Rule (LMSR) to simulate automated market maker (AMM) behavior based on those same NLP signals. The entire system is orchestrated across a distributed, polyglot architecture utilizing Rust, Python, C++, Java, and R to handle data ingestion, modeling, simulation, and serving at scale.
+The work is split across five services in Rust, Python, C++, Java, and R, each handling the part of the problem its language is actually good at — ingestion, modeling, simulation, serving, and econometrics respectively. The engine runs in two modes:
 
-The engine operates in two modes:
-
-1. **Sentiment vs. Real Market Dynamics** — evaluates lead-lag relationships, information efficiency, and price-predictive signals between X data and actual order book shifts.
-2. **Synthetic LMSR Market Engine** — simulates automated market maker (AMM) behavior using Hanson's Logarithmic Market Scoring Rule, driven by real-time NLP stance signals.
+1. **Sentiment vs. real market dynamics** — evaluates lead-lag relationships, information efficiency, and price-predictive signals between X data and actual order book shifts, via Granger causality under stationarity testing and FDR correction.
+2. **Synthetic LMSR market engine** — simulates automated market maker (AMM) behavior using Hanson's Logarithmic Market Scoring Rule, driven by the same NLP stance signals and calibrated against observed book depth.
 
 **A word on what this project is for.** The hypothesis under test — that public social sentiment carries information a liquid prediction market has not already priced — is one that efficient markets should mostly falsify. The pipeline is therefore built to report a null result cleanly rather than to search for a specification that avoids one. Several design decisions below exist specifically to make "no relationship" a reachable conclusion.
 
@@ -160,7 +158,7 @@ Where:
 - $w_i = \ln(1 + \text{Followers}_i) \cdot (1 + \text{Engagements}_i)$ scales signal weight by user reach and post amplification.
 - $\lambda = \frac{\ln(2)}{t_{half\_life}}$, with $t_{half\_life}$ set to 6 hours by default.
 
-**Implementation note.** Both sums are evaluated in log space with the maximum term factored out. This is a correctness requirement, not a style preference. float64 returns exactly zero for $e^{-x}$ once $x > 745.1$, which at a 30-minute half-life is any post older than about 22 days — past that point every term in both sums underflows and the ratio becomes $0/0$. Factoring out the peak makes the dominant term $e^0 = 1$ and the ratio well-defined at any scale. The `extreme_age` golden vector pins this: a 30-day-old post at a 30-minute half-life ($\lambda \Delta t = 998$) has an expected `weight_sum` of exactly `0.0` while still yielding the correct $S(t) = 0.5$.
+**Implementation note.** Both sums are evaluated in log space with the maximum term factored out. This is a correctness requirement, not a style preference. float64 returns exactly zero for $e^{-x}$ once $x > 1075 \ln 2 \approx 745.13$, which at a 30-minute half-life is any post older than about 22.4 days — past that point every term in both sums underflows and the ratio becomes $0/0$. Factoring out the peak makes the dominant term $e^0 = 1$ and the ratio well-defined at any scale. The `extreme_age` golden vector pins this: a 30-day-old post at a 30-minute half-life ($\lambda \Delta t = 998$) has an expected `weight_sum` of exactly `0.0` while still yielding the correct $S(t) = 0.5$.
 
 Two edge cases are handled explicitly rather than papered over. A zero-follower account gets $\ln(1) = 0$ and contributes *nothing* — that is what the formula says, so it is what the code does, but it means a window of only zero-follower posts has no defined signal. In that case, and when no posts exist at all, `compute_signal` returns `None` rather than `0.0`: zero is a real, neutral signal value, and conflating "the crowd is neutral" with "nobody has said anything" would feed the LMSR a claim nobody made.
 
@@ -196,7 +194,7 @@ so consuming the real book's depth walks the synthetic price exactly bid-to-ask.
 
 One honest caveat: real books are severely lopsided. A live Kalshi sample used to build this had **40 shares on the bid against ~69,000 on the ask**, so the choice of which side to calibrate against genuinely changes the answer. The default averages both sides; that is symmetric, not obviously correct.
 
-Every exponential goes through a max-subtracted log-sum-exp. With $b$ calibrated from real depth and realistic share counts, $q_j/b$ reaches several hundred and the naive formula returns `inf` or `NaN` on ordinary inputs.
+Every exponential goes through a max-subtracted log-sum-exp. float64 overflows at $q_j/b > 709.8$, which is unreachable when $b$ is calibrated large from a thick book — but $b$ is floored at `1.0`, and a bid-side calibration on a thin market puts it in the low hundreds, at which point ordinary share counts cross the threshold. The price vector is the dangerous one: without max-subtraction it evaluates $\infty/\infty$ and returns `NaN` rather than a merely inaccurate number.
 
 ### 4. Forecast Calibration (Brier Score)
 
@@ -358,7 +356,7 @@ Two properties the suites are built around:
 
 **Nothing touches the network or spends money by default.** Live-API tests are marked and deselected (`pytest -m live` to opt in); the X client resolves to fixture replay unless live mode is explicitly enabled.
 
-**The golden vectors are the cross-language gate.** `schemas/testdata/golden_vectors.json` holds 24 fixed cases covering S(t), the LMSR cost/price/trade functions, depth calibration, and adaptive decay. Python, C++, and R each assert their own implementation reproduces them to 1e-9. Regenerate with `python -m augury_signal.golden` after any intentional change to the reference math — and expect the other suites to fail until they are brought back into line. That failure is the mechanism working.
+**The golden vectors are the cross-language gate.** `schemas/testdata/golden_vectors.json` holds 53 fixed cases — 32 covering S(t), the LMSR cost/price/trade functions, depth calibration, and adaptive decay, plus 21 pinning the affine, logit, and sigmoid helpers those build on. Python, C++, and R each assert their own implementation reproduces them to 1e-9. The cases are chosen to be hostile rather than representative: a post old enough to underflow the decay kernel, a crossed book that must fall back rather than raise, and logit inputs at 0.001 and 0.999 that exercise the boundary clamp. Regenerate with `python -m augury_signal.golden` after any intentional change to the reference math — and expect the other suites to fail until they are brought back into line. That failure is the mechanism working.
 
 ---
 
@@ -377,7 +375,7 @@ Two properties the suites are built around:
 
 ## Known Gaps
 
-A full correctness review has been run over the codebase. It found and fixed five
+A full correctness review has been run over the codebase. It found and fixed four
 defects worth recording, because each is a class of bug the existing tests could
 not have caught:
 
@@ -387,10 +385,11 @@ not have caught:
 | Java `AuguryRepository` | Optional filters used a bare `? IS NULL`, which PostgreSQL rejects with "could not determine data type of parameter". Unit tests mock the repository, so the SQL was never executed. |
 | Rust `ReadBudget::reserve` | The `ON CONFLICT` ceiling guard does not fire on the first insert of a UTC day, so a single request larger than the entire daily budget would have been allowed through. |
 | C++ | Five missing standard headers (`<cstdint>`, `<limits>`, `<string>`, `<utility>`, `<stdexcept>`) — invisible without a compiler. |
-| Python `simulate_lmsr` | Recalibrated `b` to the same constant every step, making per-step liquidity tracking a no-op, and left a dead local behind. |
 
 Remaining, stated explicitly rather than left to be discovered:
 
+- **`simulate_lmsr` does not do what its docstring says.** The docstring claims `b` is re-calibrated at each step from the most recent book snapshot. In fact `b` is computed once before the loop and the in-loop `market.recalibrate(b)` passes that same unchanged value — which is provably a no-op, since the scaling ratio is 1 and `q_no` is identically zero along this path. A dead local survives too, now silenced with `del` rather than removed. There is a structural reason the docstring cannot be satisfied as written: `poll_prices` appends exactly **one** book snapshot per cycle (history comes from candles, which carry bid/ask but no depth), so no per-step depth series exists to calibrate against. The C++ backtester already has the correct version — per-window calibration from the training window's own books. Fixing this means either persisting a depth series or restating the docstring.
+- **The LSH banding is mistuned relative to its own threshold.** With `DEFAULT_NUM_HASHES = 128` split into `DEFAULT_NUM_BANDS = 8` bands of 16 rows, the band-collision probability $1 - (1 - s^{16})^{8}$ crosses 50% at $s \approx 0.856$ — not 0.80, as the source comment claims. At the actual duplicate threshold of 0.80 only **20.4%** of true near-duplicate pairs are ever retrieved for comparison. Because LSH here is only a pre-filter, and every candidate is then checked exactly against the threshold, a banding false positive costs one integer comparison while a false negative is a duplicate that silently counts as an independent opinion in $S(t)$. The steep region therefore belongs to the *left* of the threshold: repartitioning the same 128 permutations as 16 bands of 8 rows moves the 50% point to $s \approx 0.674$ and lifts retrieval at 0.80 to 94.7%. Not yet applied, because changing it invalidates stored `lsh_bucket` keys and needs a migration.
 - **Rust and C++ have never been compiled.** They may contain errors that only a compiler will find. See [docs/BUILD.md](docs/BUILD.md) for the two blockers and how to clear them.
 - **The DeBERTa path needs a real checkpoint.** Plain `microsoft/deberta-v3-base` is a pretrained encoder with a randomly initialized head — it has no concept of entailment, and using it directly would produce confident noise. The default points at an NLI-tuned checkpoint, which makes zero-shot stance detection work without a labeled corpus. A fine-tune on prediction-market stance data would very likely beat it.
 - **Test coverage is uneven.** The pure-math core is thoroughly tested; the database layer, Redis bus, and pipeline orchestration are not, and the Java tests cover ledger arithmetic rather than the controllers. There is no cross-service integration suite.

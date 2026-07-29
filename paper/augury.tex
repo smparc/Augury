@@ -145,11 +145,11 @@ all git-tracked files of each type, test suites included.}
 \toprule
 Service & Language & LOC & Responsibility & Status \\
 \midrule
-\code{augury-signal}    & Python 3.12 & 7{,}545 & NLP, $S(t)$, orchestration & runs, 139 tests \\
+\code{augury-signal}    & Python 3.12 & 7{,}545 & NLP, $S(t)$, orchestration & runs, 139 pass \\
 \code{augury-ingest}    & Rust 1.97   & 2{,}469 & Streaming ingest, filter   & not compiled \\
 \code{augury-engine}    & C++20       & 1{,}470 & LMSR, walk-forward         & not compiled \\
 \code{augury-api}       & Java 25     & 1{,}222 & REST, WebSocket, ledger    & 9 tests (JDK 21) \\
-\code{augury-analytics} & R 4.6       &   981   & Granger, Brier, reports    & runs, 55 tests \\
+\code{augury-analytics} & R 4.6       &   981   & Granger, Brier, reports    & runs, 55 pass \\
 \midrule
 Schema / migrations     & SQL, JSON   & 1{,}200 & Shared contracts           & migrations applied \\
 \bottomrule
@@ -272,15 +272,18 @@ The decay module's docstring motivates this by claiming that at a 30-minute
 half-life a week-old post carries $e^{-233}$, ``which underflows to exactly zero
 in float64.'' \textbf{That is not correct}, and the correction is worth stating
 because it changes where the guard actually binds. IEEE-754 binary64 carries
-subnormals down to $\approx 4.94 \times 10^{-324}$, so $\exp$ returns zero only
-for arguments below $\ln(4.94\times10^{-324}) \approx -745.1$. Concretely,
+subnormals down to $2^{-1074} \approx 4.94 \times 10^{-324}$, and because
+$\exp$ rounds to nearest it survives until its result falls below half of that
+--- so the first argument returning exactly zero is
+$-1075 \ln 2 \approx -745.13$, verified by bisection. Concretely,
 $e^{-233} = 7.14\times10^{-102}$, which is an entirely ordinary normalised
 double. Table~\ref{tab:underflow} gives the real boundary.
 
 \begin{table}[t]
 \centering
 \caption{Decay kernel magnitude by post age and half-life. Underflow to exactly
-zero begins at $\lambda \Delta t > 745.1$.}
+zero begins at $\lambda \Delta t > 745.13$, or roughly 22.4 days at a 30-minute
+half-life.}
 \label{tab:underflow}
 \small
 \begin{tabular}{@{}llrl@{}}
@@ -358,8 +361,8 @@ thirty posts.
 
 Because the half-life varies, it is recorded per signal point in the
 \code{signals} table rather than assumed constant. A series whose decay
-parameter moved is not comparable to one whose did not, and the column is what
-makes that recoverable after the fact.
+parameter moved is not comparable to one where it stayed fixed, and the column
+is what makes that distinction recoverable after the fact.
 
 \section{Target-Conditioned Stance}
 \label{sec:stance}
@@ -636,12 +639,12 @@ that makes a simulation unfalsifiable. It is therefore derived.
 
 In a real book, consuming the size resting between the bid and the ask walks the
 price across the quoted range. By Eq.~\ref{eq:logitid}, moving the synthetic
-price the same distance costs
-$b\,(\operatorname{logit}(a) - \operatorname{logit}(d))$ shares for bid $d$ and
-ask $a$. Setting the two equal:
+price that same distance costs
+$b\,\big(\operatorname{logit}(\text{ask}) - \operatorname{logit}(\text{bid})\big)$
+shares. Setting the two equal:
 
 \begin{equation}
-b = \frac{\text{depth}}{\operatorname{logit}(a) - \operatorname{logit}(d)}.
+b = \frac{\text{depth}}{\operatorname{logit}(\text{ask}) - \operatorname{logit}(\text{bid})}.
 \label{eq:calib}
 \end{equation}
 
@@ -756,8 +759,8 @@ and all four are enforced in code.
 
 \paragraph{Logit transform.} $P_t \in [0,1]$ and $S_t \in [-1,1]$ are both
 bounded. A market at $0.03$ cannot fall much further, so its innovations are
-asymmetric and its level is near-certainly non-stationary in the sense the test
-assumes. Both series are mapped through
+asymmetric and its level is near-certainly not stationary in the sense the VAR
+requires. Both series are mapped through
 $\tilde{x} = \ln\!\big(x/(1-x)\big)$ before fitting, with $S$ first mapped to
 $(S+1)/2$ so it can share the transform. Lag order $p$ is chosen by AIC or BIC,
 capped at $\min\!\big(12, \lfloor (n-2)/4 \rfloor\big)$ so the VAR is never fit
@@ -766,10 +769,10 @@ on fewer effective observations than it has coefficients.
 \paragraph{Stationarity is tested, not assumed.} An Augmented Dickey--Fuller
 result travels with every reported test, for both series. Granger causality
 between two integrated series manufactures impressive $p$-values out of pure
-spurious regression. The ADF null is a unit root, so a \emph{small} $p$-value
-means stationary --- the opposite of the intuition most readers carry into it,
-which is why the R implementation returns the result as a named list rather than
-a bare number.
+spurious regression. The ADF null is a unit root, so a \emph{small} $p$-value is
+evidence \emph{for} stationarity --- the opposite of the intuition most readers
+carry into it, which is why the R implementation returns the result as a named
+list rather than a bare number.
 
 \paragraph{Alignment is a fixed convention, not a parameter.} Lead--lag results
 are extremely sensitive to how the two series are joined. Post time is
@@ -1035,7 +1038,7 @@ Java \code{AuguryRepository} &
 Optional filters used a bare \code{? IS NULL}, which PostgreSQL rejects with
 ``could not determine data type of parameter''. &
 Unit tests mock the repository, so the SQL was never sent to a server. \\[2pt]
-Rust \code{ReadBudget::}\-\code{reserve} &
+Rust \code{ReadBudget::}\allowbreak\code{reserve} &
 The \code{ON CONFLICT} ceiling guard does not fire on the first insert of a UTC
 day, so one request larger than the whole daily budget was allowed through. &
 The path requires a live database and an empty budget table; integration tests
@@ -1155,9 +1158,9 @@ mathematics it implements --- a decay-weighted stance aggregate, a
 depth-calibrated LMSR market maker, a guarded Granger test, and a
 market-referenced Brier skill score --- is not individually novel. What the
 system contributes is the discipline around it: three independent
-implementations pinned to a shared set of hostile golden vectors; a set of
-statistical guards that are enforced in code rather than in the analyst's
-memory; and an evaluation path on which the answer ``the market is already
+implementations held to one shared set of deliberately hostile golden vectors,
+two of them currently executed against it; statistical guards enforced in code
+rather than in the analyst's memory; and an evaluation path on which the answer ``the market is already
 efficient with respect to this signal'' is as easy to reach and as clearly
 printed as its opposite.
 
