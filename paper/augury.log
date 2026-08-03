@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.7.28)  3 AUG 2026 12:42
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.7.28)  3 AUG 2026 12:44
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1228,7 +1228,7 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 914.
 
-[11] [12] [13] [14] [15] [16] [17] [18]
+[11] [12] [13] [14] [15] [16] [17] [18] [19]
 PGFPlots: reading {data/series.csv}
 PGFPlots: reading {data/series.csv}
 PGFPlots: reading {data/series.csv}
@@ -1251,44 +1251,44 @@ NOTE: coordinate (28.0,) has been dropped because of a coordinate filter. (see
 also unbounded coords=jump). 
 NOTE: coordinate (43.0,) has been dropped because of a coordinate filter. (see 
 also unbounded coords=jump). 
-Package pgfplots info on input line 1513: Using 'lua backend=false' for axis: x
+Package pgfplots info on input line 1577: Using 'lua backend=false' for axis: x
 mode=log unsupported (yet).
 
-Underfull \hbox (badness 10000) in paragraph at lines 1546--1546
+Underfull \hbox (badness 10000) in paragraph at lines 1610--1610
 []|\T1/lmr/m/n/10 (+20) Java
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1550--1550
+Underfull \hbox (badness 10000) in paragraph at lines 1614--1614
 []|\T1/lmr/m/n/10 (+20) Rust \T1/lmtt/m/n/10 ReadBudget::
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1556--1557
+Underfull \hbox (badness 10000) in paragraph at lines 1620--1621
 []|\T1/lmr/m/n/10 (+20) Five miss-ing stan-dard head-ers
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1556--1557
+Underfull \hbox (badness 10000) in paragraph at lines 1620--1621
 \T1/lmr/m/n/10 (+20) (\T1/lmtt/m/n/10 <cstdint>\T1/lmr/m/n/10 (+20) , \T1/lmtt/
 m/n/10 <limits>\T1/lmr/m/n/10 (+20) , \T1/lmtt/m/n/10 <string>\T1/lmr/m/n/10 (+
 20) ,
  []
 
-[19] [20] [21] [22] [23] (augury.aux)
+[20] [21] [22] [23] [24] [25] (augury.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2025-12-24>
  ***********
 Package rerunfilecheck Info: File `augury.out' has not changed.
-(rerunfilecheck)             Checksum: 2DCED24D9C2033935457E1A1EAA430DC;5381.
+(rerunfilecheck)             Checksum: 722CE261AA7FF7073ECAB3545F9A1410;5565.
  ) 
 Here is how much of TeX's memory you used:
- 40448 strings out of 467871
- 915908 string characters out of 5418376
- 1788994 words of memory out of 5000000
- 68156 multiletter control sequences out of 15000+600000
- 782636 words of font info for 331 fonts, out of 8000000 for 9000
+ 40582 strings out of 467871
+ 918164 string characters out of 5418376
+ 1936232 words of memory out of 5000000
+ 68229 multiletter control sequences out of 15000+600000
+ 783145 words of font info for 337 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  84i,19n,94p,1005b,2686s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx10.pf
@@ -1319,11 +1319,12 @@ ppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy7.pfb><C:/Users/smpar/Ap
 pData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy8.pfb><C:/Users/smpar/App
 Data/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy9.pfb><C:/Users/smpar/AppD
 ata/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt10.pfb><C:/Users/smpar/AppD
-ata/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt9.pfb><C:/Users/smpar/AppDa
-ta/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/symbols/msam10.pfb>
-Output written on augury.pdf (23 pages, 749589 bytes).
+ata/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt8.pfb><C:/Users/smpar/AppDa
+ta/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt9.pfb><C:/Users/smpar/AppDat
+a/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/symbols/msam10.pfb>
+Output written on augury.pdf (25 pages, 803793 bytes).
 PDF statistics:
- 553 PDF objects out of 1000 (max. 8388607)
- 120 named destinations out of 1000 (max. 500000)
- 86785 words of extra memory for PDF output out of 89155 (max. 10000000)
+ 635 PDF objects out of 1000 (max. 8388607)
+ 169 named destinations out of 1000 (max. 500000)
+ 86793 words of extra memory for PDF output out of 89155 (max. 10000000)
 

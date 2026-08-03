@@ -1,0 +1,41 @@
+════════════════════════════════════════════════════════════════════
+AUGURY VERTICAL SLICE — kalshi:KXFEDDECISION-26SEP-C25
+════════════════════════════════════════════════════════════════════
+  Will the Federal Reserve Cut rates by 25bps at their September 2026 meeting?
+  target: The Federal Reserve will cut interest rates by 25 basis points at its September 2026 meeting.
+  status: open
+
+── market data ───────────────────────────────────────────────────
+  price bars fetched   : 277
+  book                 : bid 0.01 / ask 0.020000000000000018  spread 0.0100
+  depth (bid/ask)      : 98329.33 / 858548.26
+  LMSR b (from depth)  : 680,277.41
+
+── social signal ─────────────────────────────────────────────────
+  post source          : FIXTURE REPLAY (no live X reads, no cost)
+  posts                : 12
+  stance model         : vader-3.3.2
+  mean raw stance      : +0.0907
+  S(t) points          : 48
+  latest S(t)          : -0.5589  (p_hat 0.2205, 11 posts, half-life 6.00h)
+
+── synthetic LMSR market ─────────────────────────────────────────
+  sim ticks            : 48
+  sim price            : 0.0890 → 0.2218
+  real market mid      : 0.0150  (gap +0.2068)
+
+── lead-lag ──────────────────────────────────────────────────────
+  strongest |r|        : -0.3981 at lag +6h (signal leads, n=33)
+    lag +0h  r = -0.1770  (contemporaneous)
+    lag +1h  r = -0.1885  (signal leads)
+    lag +2h  r = -0.2016  (signal leads)
+    lag +3h  r = -0.2168  (signal leads)
+  Granger              : market price is nearly constant over this window — the test is degenerate
+
+── calibration ───────────────────────────────────────────────────
+  market has not resolved yet — Brier/BSS deferred to the watcher
+
+════════════════════════════════════════════════════════════════════
+Posts were replayed from fixtures. These numbers exercise the pipeline;
+they are not evidence about the real relationship between X and this market.
+════════════════════════════════════════════════════════════════════

@@ -1055,6 +1055,36 @@ result reachable:
       concern.
 \end{itemize}
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\footnotesize, x=0.115mm, y=1cm]
+\foreach \i/\o in {0/0, 1/24, 2/48, 3/72} {
+  \pgfmathsetmacro{\yy}{-\i*0.62}
+  \draw[fill=augBlue!18, draw=augBlue, thick] (\o*1,\yy) rectangle (\o*1+72,\yy+0.42);
+  \node[font=\scriptsize, augBlue!60!black] at (\o*1+36,\yy+0.21) {train (72)};
+  \draw[fill=augOrange!22, draw=augOrange, thick] (\o*1+72,\yy) rectangle (\o*1+96,\yy+0.42);
+  \node[font=\scriptsize, augOrange!60!black] at (\o*1+84,\yy+0.21) {test (24)};
+  \node[anchor=east, font=\scriptsize, augGrey] at (-4,\yy+0.21) {window \i};
+  % fitted params
+  \node[anchor=west, font=\scriptsize, augGrey] at (\o*1+100,\yy+0.21)
+    {$b_{\i}$, $\rho_{\i}$ fitted on train};
+}
+\draw[{Latex[length=1.8mm]}-{Latex[length=1.8mm]}, augGrey] (0,-2.15) -- (96,-2.15)
+  node[midway, below, font=\scriptsize, augGrey] {step $=$ test size $\Rightarrow$ test windows never overlap};
+\draw[augGrey, dashed] (72,0.5) -- (72,-2.0);
+\node[anchor=south, font=\scriptsize, augGrey, align=center] at (170,0.48)
+  {calibration uses training-window books only};
+\end{tikzpicture}
+\caption{Walk-forward evaluation in the C++ engine. Each window fits $b$ from its
+own training-period order books and grid-searches responsiveness $\rho$ there,
+then evaluates untouched on the test block. The step equals the test size, so no
+observation is scored twice --- overlapping test windows would reuse data across
+evaluations and make the results look more consistent than they are. The spread
+of $b$ across windows is reported as a coefficient of variation, which
+Table~\ref{tab:obs} suggests will be large.}
+\label{fig:walkforward}
+\end{figure}
+
 The engine is deliberately file-in/file-out over JSON with no database or Redis
 client. The numerical core is the part worth writing in C++; keeping the I/O
 boundary at JSON means the binary is trivially testable and has no transport
@@ -1153,6 +1183,40 @@ smoothing is a fitting device and quoting the smoothed loss would flatter the
 model. The fit refuses to run at all when every resolved market in the batch had
 the same outcome, on the grounds that such a batch says nothing about where the
 decision boundary sits.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  augbase, height=5.0cm,
+  xlabel={$S(t)$}, ylabel={$\hat{p}$},
+  xmin=-1, xmax=1, ymin=0, ymax=1,
+  legend pos=north west,
+]
+\addplot[augBlue, line width=1.2pt, domain=-1:1, samples=2] {(x+1)/2};
+\addlegendentry{affine $\hat{p}=(S+1)/2$ \ (in use)}
+\addplot[augGreen, dashed, domain=-1:1, samples=120] {1/(1+exp(-(0 + 1.0*x)))};
+\addlegendentry{Platt, $b=1.0$ \ (illustrative)}
+\addplot[augPurple, dotted, line width=1.1pt, domain=-1:1, samples=120] {1/(1+exp(-(-1.2 + 0.8*x)))};
+\addlegendentry{Platt, $a=-1.2,\ b=0.8$ \ (illustrative)}
+% the observed point
+\addplot[augRed, only marks, mark=*, mark size=2pt] coordinates {(-0.559,0.2205)};
+\addplot[augOrange, dashed, line width=1pt] coordinates {(-1,0.035) (1,0.035)};
+\node[annot, text=augRed, anchor=west] at (axis cs:-0.52,0.30) {observed: $S=-0.559 \Rightarrow \hat{p}=0.221$};
+\node[annot, text=augOrange, anchor=west] at (axis cs:0.1,0.075) {market price $0.035$};
+\end{axis}
+\end{tikzpicture}
+\caption{Mapping the signal into probability space. The affine map is a straight
+line through $(0, 0.5)$ --- it asserts that a neutral signal means even odds,
+which on a market trading at $0.035$ is badly wrong, and is the whole of the
+$18.5$-point gap in Section~\ref{sec:worked}. A Platt fit is the mechanism for
+correcting it, and the illustrative curves show the shape it would take: an
+intercept $a<0$ shifts the whole map toward the base rate and a slope $b<1$
+pulls in the extremes. \textbf{No fit exists yet}, because no tracked market has
+resolved; these parameters are drawn to show the direction of the correction,
+not measured.}
+\label{fig:calibmap}
+\end{figure}
 
 Reported alone, the Brier score still answers the wrong question: a market that
 traded at $0.02$ for a month and resolved NO yields a superb score for any
@@ -1698,6 +1762,68 @@ every backtest window, a market-referenced skill score, and a
 $b$-stability statistic that invalidates its own MSE figures when it drifts ---
 exist so that when the ingester has run long enough to produce an answer, the
 answer will be worth the wait, in whichever direction it falls.
+
+\appendix
+
+\section{The slice report, verbatim}
+\label{app:slice}
+
+Output of \code{python -m augury\_signal.cli slice --market KXFEDDECISION-26SEP-C25}
+on 3 August 2026, unedited. Kalshi price and book data are live; posts are
+fixture replay. This is the run tabulated in Table~\ref{tab:obs} and plotted in
+Figures~\ref{fig:series}--\ref{fig:book}.
+
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
+====================================================================
+AUGURY VERTICAL SLICE - kalshi:KXFEDDECISION-26SEP-C25
+====================================================================
+  Will the Federal Reserve Cut rates by 25bps at their September 2026 meeting?
+  target: The Federal Reserve will cut interest rates by 25 basis points at
+          its September 2026 meeting.
+  status: open
+
+-- market data ------------------------------------------------------
+  price bars fetched   : 277
+  book                 : bid 0.01 / ask 0.020000000000000018  spread 0.0100
+  depth (bid/ask)      : 98353.33 / 858548.26
+  LMSR b (from depth)  : 680,294.47
+
+-- social signal ----------------------------------------------------
+  post source          : FIXTURE REPLAY (no live X reads, no cost)
+  posts                : 12
+  stance model         : vader-3.3.2
+  mean raw stance      : +0.0907
+  S(t) points          : 48
+  latest S(t)          : -0.5589  (p_hat 0.2205, 11 posts, half-life 6.00h)
+
+-- synthetic LMSR market --------------------------------------------
+  sim ticks            : 48
+  sim price            : 0.0890 -> 0.2204
+  real market mid      : 0.0150  (gap +0.2054)
+
+-- lead-lag ---------------------------------------------------------
+  strongest |r|        : -0.3686 at lag +6h (signal leads, n=33)
+    lag +0h  r = -0.1688  (contemporaneous)
+    lag +1h  r = -0.1793  (signal leads)
+    lag +2h  r = -0.1912  (signal leads)
+    lag +3h  r = -0.2048  (signal leads)
+  Granger              : market price is nearly constant over this window
+                         - the test is degenerate
+
+-- calibration ------------------------------------------------------
+  market has not resolved yet - Brier/BSS deferred to the watcher
+
+====================================================================
+Posts were replayed from fixtures. These numbers exercise the pipeline;
+they are not evidence about the real relationship between X and this market.
+====================================================================
+\end{lstlisting}
+
+Two lines are worth reading against each other. The Granger block refuses to
+report a number and says why. Four lines above it, the cross-correlation block
+reports a monotone gradient to $-0.369$ labelled \emph{signal leads} --- on the
+same data, from the same window, with no such warning. That contrast is the
+defect of Section~\ref{sec:obs2} as the tool actually prints it.
 
 \begin{thebibliography}{9}
 
