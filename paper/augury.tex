@@ -427,6 +427,44 @@ of zero would make the surge ratio undefined --- silently disabling the trigger
 in the case where it is most informative, a quiet market that suddenly receives
 thirty posts.
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  augbase, width=0.72\textwidth, height=5.6cm,
+  xlabel={Posts in trailing hour (baseline $r_{\text{base}} = 5$/h)},
+  ylabel={$|\Delta p|$ over trailing hour},
+  view={0}{90},
+  colormap/viridis,
+  colorbar,
+  colorbar style={
+    title={\footnotesize $t_{1/2}^{\text{eff}}$ (h)},
+    ytick={0.5,1.5,3,4.5,6},
+    tick label style={font=\footnotesize}
+  },
+  xmin=0, xmax=60, ymin=0, ymax=0.25,
+  point meta min=0.5, point meta max=6,
+]
+\addplot3[surf, shader=interp, mesh/ordering=rowwise, mesh/cols=26]
+  table[x=posts, y=move, z=half_life_h, col sep=comma] {data/halflife_grid.csv};
+% trigger thresholds
+\addplot3[augRed, dashed, line width=0.9pt] coordinates {(0,0.05,10) (60,0.05,10)};
+\addplot3[augRed, dashed, line width=0.9pt] coordinates {(15,0,10) (15,0.25,10)};
+\node[font=\footnotesize, white, anchor=west] at (axis cs:1,0.015,10) {baseline: 6.00\,h};
+\node[font=\footnotesize, augRed, anchor=south west] at (axis cs:0.6,0.052,10) {$\theta = 0.05$};
+\node[font=\footnotesize, augRed, anchor=south west, rotate=90] at (axis cs:15.6,0.10,10) {$\kappa r_{\text{base}} = 15$};
+\end{axis}
+\end{tikzpicture}
+\caption{Effective half-life as a function of the two adaptive triggers,
+evaluated by calling \code{effective\_half\_life} over a grid. Inside both
+thresholds (lower-left block) the factor is exactly $1$ and the baseline 6-hour
+half-life is preserved bit-for-bit. Either trigger alone shortens it; the
+surface saturates at the configured floor $t_{\min} = 30$ minutes. The two
+mechanisms are combined by $\max$, not by summation, so a market that is both
+busy and moving is not double-counted.}
+\label{fig:halflife}
+\end{figure}
+
 Because the half-life varies, it is recorded per signal point in the
 \code{signals} table rather than assumed constant. A series whose decay
 parameter moved is not comparable to one where it stayed fixed, and the column

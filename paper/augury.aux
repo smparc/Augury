@@ -17,68 +17,72 @@
 \newlabel{eq:signal}{{1}{3}{The Social Signal $S(t)$}{equation.1}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Decay kernel magnitude by post age and half-life. Underflow to exactly zero begins at $\lambda \Delta t > 745.13$, or roughly 22.4 days at a 30-minute half-life.}}{4}{table.caption.4}\protected@file@percent }
 \newlabel{tab:underflow}{{2}{4}{Decay kernel magnitude by post age and half-life. Underflow to exactly zero begins at $\lambda \Delta t > 745.13$, or roughly 22.4 days at a 30-minute half-life}{table.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces The decay kernel over 32 days. At a 6-hour half-life nothing comes close to the boundary. At the 30-minute half-life the adaptive path can reach, the kernel falls off the representable range entirely at 22.4 days --- the orange curve simply stops, because beyond that point every term in both sums of Eq.~\ref {eq:signal} is exactly zero and the naive ratio is $0/0$. The widely quoted $e^{-233}$ at one week sits at $10^{-102}$, nowhere near the cliff.}}{4}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:underflow}{{2}{4}{The decay kernel over 32 days. At a 6-hour half-life nothing comes close to the boundary. At the 30-minute half-life the adaptive path can reach, the kernel falls off the representable range entirely at 22.4 days --- the orange curve simply stops, because beyond that point every term in both sums of Eq.~\ref {eq:signal} is exactly zero and the naive ratio is $0/0$. The widely quoted $e^{-233}$ at one week sits at $10^{-102}$, nowhere near the cliff}{figure.caption.5}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Log-space evaluation, and where float64 actually fails}{4}{subsection.3.1}\protected@file@percent }
 \newlabel{eq:logspace}{{2}{4}{Log-space evaluation, and where float64 actually fails}{equation.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Two degenerate cases handled rather than papered over}{4}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Two degenerate cases handled rather than papered over}{5}{subsection.3.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Adaptive half-lives}{5}{subsection.3.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {4}Target-Conditioned Stance}{5}{section.4}\protected@file@percent }
 \newlabel{sec:stance}{{4}{5}{Target-Conditioned Stance}{section.4}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {5}Ingestion and Near-Duplicate Filtering}{6}{section.5}\protected@file@percent }
-\newlabel{sec:ingest}{{5}{6}{Ingestion and Near-Duplicate Filtering}{section.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}MinHash and LSH}{6}{subsection.5.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}The banding is mistuned}{6}{subsection.5.2}\protected@file@percent }
-\newlabel{eq:scurve}{{5}{6}{The banding is mistuned}{equation.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Effective half-life as a function of the two adaptive triggers, evaluated by calling \texttt  {\small  effective\_half\_life} over a grid. Inside both thresholds (lower-left block) the factor is exactly $1$ and the baseline 6-hour half-life is preserved bit-for-bit. Either trigger alone shortens it; the surface saturates at the configured floor $t_{\min } = 30$ minutes. The two mechanisms are combined by $\max $, not by summation, so a market that is both busy and moving is not double-counted.}}{6}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:halflife}{{3}{6}{Effective half-life as a function of the two adaptive triggers, evaluated by calling \code {effective\_half\_life} over a grid. Inside both thresholds (lower-left block) the factor is exactly $1$ and the baseline 6-hour half-life is preserved bit-for-bit. Either trigger alone shortens it; the surface saturates at the configured floor $t_{\min } = 30$ minutes. The two mechanisms are combined by $\max $, not by summation, so a market that is both busy and moving is not double-counted}{figure.caption.6}{}}
 \@writefile{loa}{\contentsline {algorithm}{\numberline {1}{\ignorespaces Streaming near-duplicate check against a bounded window}}{7}{algorithm.1}\protected@file@percent }
 \newlabel{alg:dup}{{1}{7}{Streaming near-duplicate check against a bounded window}{algorithm.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Probability that a pair with Jaccard similarity $s$ is retrieved for comparison. The shipped configuration's steep region sits to the \emph  {right} of the $\tau = 0.80$ decision threshold, which is the wrong side.}}{7}{table.caption.5}\protected@file@percent }
-\newlabel{tab:lsh}{{3}{7}{Probability that a pair with Jaccard similarity $s$ is retrieved for comparison. The shipped configuration's steep region sits to the \emph {right} of the $\tau = 0.80$ decision threshold, which is the wrong side}{table.caption.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Rejects are stored, not dropped}{7}{subsection.5.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces LSH retrieval probability. The decision threshold is $\tau = 0.80$; the shipped banding retrieves only $20.4\%$ of true duplicates there.}}{8}{figure.caption.6}\protected@file@percent }
-\newlabel{fig:scurve}{{2}{8}{LSH retrieval probability. The decision threshold is $\tau = 0.80$; the shipped banding retrieves only $20.4\%$ of true duplicates there}{figure.caption.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}The read budget}{8}{subsection.5.4}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Depth calibration on a live Kalshi book: bid $0.03 \times 93$, ask $0.04 \times 67{,}296$. The logit width is $0.2980$. The choice of side changes $b$ by a factor of $723$.}}{9}{table.caption.7}\protected@file@percent }
-\newlabel{tab:depth}{{4}{9}{Depth calibration on a live Kalshi book: bid $0.03 \times 93$, ask $0.04 \times 67{,}296$. The logit width is $0.2980$. The choice of side changes $b$ by a factor of $723$}{table.caption.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Ingestion and Near-Duplicate Filtering}{7}{section.5}\protected@file@percent }
+\newlabel{sec:ingest}{{5}{7}{Ingestion and Near-Duplicate Filtering}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}MinHash and LSH}{7}{subsection.5.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Probability that a pair with Jaccard similarity $s$ is retrieved for comparison. The shipped configuration's steep region sits to the \emph  {right} of the $\tau = 0.80$ decision threshold, which is the wrong side.}}{8}{table.caption.7}\protected@file@percent }
+\newlabel{tab:lsh}{{3}{8}{Probability that a pair with Jaccard similarity $s$ is retrieved for comparison. The shipped configuration's steep region sits to the \emph {right} of the $\tau = 0.80$ decision threshold, which is the wrong side}{table.caption.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces LSH retrieval probability. The decision threshold is $\tau = 0.80$; the shipped banding retrieves only $20.4\%$ of true duplicates there.}}{8}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:scurve}{{4}{8}{LSH retrieval probability. The decision threshold is $\tau = 0.80$; the shipped banding retrieves only $20.4\%$ of true duplicates there}{figure.caption.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}The banding is mistuned}{8}{subsection.5.2}\protected@file@percent }
+\newlabel{eq:scurve}{{5}{8}{The banding is mistuned}{equation.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Rejects are stored, not dropped}{8}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}The read budget}{9}{subsection.5.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {6}The LMSR Synthetic Market}{9}{section.6}\protected@file@percent }
 \newlabel{sec:lmsr}{{6}{9}{The LMSR Synthetic Market}{section.6}{}}
 \newlabel{eq:logitid}{{7}{9}{The LMSR Synthetic Market}{equation.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Calibrating $b$ from observed depth}{9}{subsection.6.1}\protected@file@percent }
-\newlabel{eq:calib}{{8}{9}{Calibrating $b$ from observed depth}{equation.8}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Real books are severely lopsided}{9}{subsection.6.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Depth calibration on a live Kalshi book: bid $0.03 \times 93$, ask $0.04 \times 67{,}296$. The logit width is $0.2980$. The choice of side changes $b$ by a factor of $723$.}}{10}{table.caption.9}\protected@file@percent }
+\newlabel{tab:depth}{{4}{10}{Depth calibration on a live Kalshi book: bid $0.03 \times 93$, ask $0.04 \times 67{,}296$. The logit width is $0.2980$. The choice of side changes $b$ by a factor of $723$}{table.caption.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Calibrating $b$ from observed depth}{10}{subsection.6.1}\protected@file@percent }
+\newlabel{eq:calib}{{8}{10}{Calibrating $b$ from observed depth}{equation.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Real books are severely lopsided}{10}{subsection.6.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Numerical stability, stated precisely}{10}{subsection.6.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Walk-forward backtesting}{10}{subsection.6.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Walk-forward backtesting}{11}{subsection.6.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {7}Econometrics}{11}{section.7}\protected@file@percent }
 \newlabel{sec:econ}{{7}{11}{Econometrics}{section.7}{}}
-\@writefile{toc}{\contentsline {paragraph}{Logit transform.}{11}{section*.8}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Stationarity is tested, not assumed.}{11}{section*.9}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Alignment is a fixed convention, not a parameter.}{11}{section*.10}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Multiple comparisons.}{11}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Logit transform.}{11}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stationarity is tested, not assumed.}{12}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Alignment is a fixed convention, not a parameter.}{12}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Multiple comparisons.}{12}{section*.13}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Forecast calibration}{12}{subsection.7.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {8}Cross-Language Verification}{12}{section.8}\protected@file@percent }
-\newlabel{sec:golden}{{8}{12}{Cross-Language Verification}{section.8}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Golden-vector inventory. Each case fixes inputs and the expected output of the Python reference.}}{13}{table.caption.12}\protected@file@percent }
-\newlabel{tab:golden}{{5}{13}{Golden-vector inventory. Each case fixes inputs and the expected output of the Python reference}{table.caption.12}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {9}Serving Layer}{13}{section.9}\protected@file@percent }
-\newlabel{sec:serving}{{9}{13}{Serving Layer}{section.9}{}}
-\@writefile{toc}{\contentsline {paragraph}{Blocking work never touches the event loop.}{13}{section*.13}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{SQL NULL is not zero.}{13}{section*.14}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Optional filters need explicit casts.}{13}{section*.15}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Vertical slice, \texttt  {\small  kalshi:KXFEDDECISION-26SEP-C25}, 28 July 2026. Prices and order book are live Kalshi data; posts are fixture replay.}}{14}{table.caption.16}\protected@file@percent }
-\newlabel{tab:slice}{{6}{14}{Vertical slice, \code {kalshi:KXFEDDECISION-26SEP-C25}, 28 July 2026. Prices and order book are live Kalshi data; posts are fixture replay}{table.caption.16}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Golden-vector inventory. Each case fixes inputs and the expected output of the Python reference.}}{13}{table.caption.14}\protected@file@percent }
+\newlabel{tab:golden}{{5}{13}{Golden-vector inventory. Each case fixes inputs and the expected output of the Python reference}{table.caption.14}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Cross-Language Verification}{13}{section.8}\protected@file@percent }
+\newlabel{sec:golden}{{8}{13}{Cross-Language Verification}{section.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Serving Layer}{14}{section.9}\protected@file@percent }
+\newlabel{sec:serving}{{9}{14}{Serving Layer}{section.9}{}}
+\@writefile{toc}{\contentsline {paragraph}{Blocking work never touches the event loop.}{14}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{SQL NULL is not zero.}{14}{section*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Optional filters need explicit casts.}{14}{section*.17}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {10}A Worked End-to-End Run}{14}{section.10}\protected@file@percent }
 \newlabel{sec:worked}{{10}{14}{A Worked End-to-End Run}{section.10}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Defects found by review, and why the test suite missed each.}}{15}{table.caption.17}\protected@file@percent }
-\newlabel{tab:defects}{{7}{15}{Defects found by review, and why the test suite missed each}{table.caption.17}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Vertical slice, \texttt  {\small  kalshi:KXFEDDECISION-26SEP-C25}, 28 July 2026. Prices and order book are live Kalshi data; posts are fixture replay.}}{15}{table.caption.18}\protected@file@percent }
+\newlabel{tab:slice}{{6}{15}{Vertical slice, \code {kalshi:KXFEDDECISION-26SEP-C25}, 28 July 2026. Prices and order book are live Kalshi data; posts are fixture replay}{table.caption.18}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {11}Defects Found by Review}{15}{section.11}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {11.1}A fifth defect, recorded as fixed but still present}{15}{subsection.11.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Test inventory. Uncompiled code is unverified code, and is labelled as such.}}{16}{table.caption.18}\protected@file@percent }
-\newlabel{tab:tests}{{8}{16}{Test inventory. Uncompiled code is unverified code, and is labelled as such}{table.caption.18}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Defects found by review, and why the test suite missed each.}}{16}{table.caption.19}\protected@file@percent }
+\newlabel{tab:defects}{{7}{16}{Defects found by review, and why the test suite missed each}{table.caption.19}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {12}Verification Status and Limitations}{16}{section.12}\protected@file@percent }
 \newlabel{sec:limits}{{12}{16}{Verification Status and Limitations}{section.12}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Test inventory. Uncompiled code is unverified code, and is labelled as such.}}{17}{table.caption.20}\protected@file@percent }
+\newlabel{tab:tests}{{8}{17}{Test inventory. Uncompiled code is unverified code, and is labelled as such}{table.caption.20}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {13}Conclusion}{17}{section.13}\protected@file@percent }
 \bibcite{hanson}{1}
 \bibcite{hanson2007}{2}
 \bibcite{granger}{3}
 \bibcite{bh}{4}
-\@writefile{toc}{\contentsline {section}{\numberline {13}Conclusion}{17}{section.13}\protected@file@percent }
 \bibcite{brier}{5}
 \bibcite{platt}{6}
 \bibcite{broder}{7}
