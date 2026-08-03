@@ -445,7 +445,7 @@ thirty posts.
   xmin=0, xmax=60, ymin=0, ymax=0.25,
   point meta min=0.5, point meta max=6,
 ]
-\addplot3[surf, shader=interp, mesh/ordering=rowwise, mesh/cols=26]
+\addplot3[surf, shader=interp, mesh/ordering=x varies, mesh/cols=31]
   table[x=posts, y=move, z=half_life_h, col sep=comma] {data/halflife_grid.csv};
 % trigger thresholds
 \addplot3[augRed, dashed, line width=0.9pt] coordinates {(0,0.05,10) (60,0.05,10)};
