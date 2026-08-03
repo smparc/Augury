@@ -102,9 +102,14 @@ the float64 underflow threshold for the decay kernel is $\lambda\Delta t > 745$,
 not the $233$ claimed; the shipped LSH band configuration retrieves only
 $20.4\%$ of true duplicates at its own declared threshold; and the per-step
 liquidity recalibration described in the simulation docstring is provably a
-no-op as implemented. No lead--lag result is reported, because none is yet
-earned: the ingester has not run long enough. The contribution is the instrument
-and its calibration, not a finding.
+no-op as implemented. Re-running the pipeline six days later then produced a
+fourth and more consequential result: on a market that had gone flat, the
+Granger path correctly refused to report a number while the cross-correlation
+path, guarded by float set cardinality rather than a tolerance, reported a clean
+spurious gradient computed against six units in the last place of rounding
+noise. No lead--lag result is claimed, because none is yet earned: the ingester
+has not run long enough. The contribution is the instrument and its calibration,
+not a finding.
 \end{abstract}
 
 \section{Introduction}
@@ -157,6 +162,10 @@ Section~\ref{sec:ingest} the fifth, and Section~\ref{sec:lmsr} the sixth.
       vectors generated from the Python reference and asserted at $10^{-9}$ by
       independent implementations in R and C++, with the vectors chosen to be
       hostile rather than representative.
+\item \textbf{Two dated observations of the same market}
+      (Section~\ref{sec:obs2}), six days apart, which measure the liquidity
+      calibration's day-to-day instability directly and expose a runtime
+      guard that reports a cross-correlation against floating-point noise.
 \item \textbf{An honest verification ledger} (Sections~\ref{sec:worked} and
       \ref{sec:limits}), separating what has been executed from what has only
       been written.
@@ -229,10 +238,10 @@ the REST API keep working off the database.
   fk/.style={-{Latex[length=1.6mm]}, draw=augGrey!80},
 ]
 \node[rel] (markets) {\textbf{markets}\\ \underline{market\_id}\\ venue, ticker, target\\ status, resolved\_outcome};
-\node[hyp, right=13mm of markets] (posts) {\textbf{posts} \hfill \textit{1 d}\\ \underline{post\_id, market\_id, created\_at}\\ followers, engagements\\ minhash[], lsh\_bucket\\ filter\_verdict, source};
+\node[hyp, right=13mm of markets] (posts) {\textbf{posts} \hfill \textit{1 d}\\ \underline{post\_id, market\_id,}\\ \underline{created\_at}\\ followers, engagements\\ minhash[], lsh\_bucket\\ filter\_verdict, source};
 \node[hyp, below=5mm of posts] (stances) {\textbf{stances} \hfill \textit{1 d}\\ \underline{post\_id, market\_id,}\\ \underline{model\_version, created\_at}\\ stance, confidence, disagreement};
 \node[hyp, below=5mm of markets] (prices) {\textbf{market\_prices} \hfill \textit{7 d}\\ \underline{market\_id, ts, source}\\ yes\_bid/ask, spread\\ depth\_bid, depth\_ask};
-\node[hyp, below=5mm of prices] (signals) {\textbf{signals} \hfill \textit{7 d}\\ \underline{market\_id, ts, model\_version}\\ s\_t, p\_hat, calibration\\ half\_life\_seconds};
+\node[hyp, below=5mm of prices] (signals) {\textbf{signals} \hfill \textit{7 d}\\ \underline{market\_id, ts,}\\ \underline{model\_version}\\ s\_t, p\_hat, calibration\\ half\_life\_seconds};
 \node[hyp, below=5mm of stances] (sim) {\textbf{sim\_prices} \hfill \textit{7 d}\\ \underline{market\_id, ts, run\_id}\\ sim\_price, b, q\_yes, q\_no};
 \node[led, below=5mm of signals] (scores) {\textbf{scores} / \textbf{granger\_results}\\ brier\_signal, brier\_market, bss\\ p\_value\_adj, significant};
 \node[led, below=5mm of sim] (ledger) {\textbf{positions} / \textbf{ledger\_fills}\\ qty\_yes, qty\_no, cash\\ realized\_pnl, settled};
@@ -449,7 +458,6 @@ Half-life & Post age & $\lambda \Delta t$ & $e^{-\lambda \Delta t}$ \\
 \addplot[augRed, only marks, mark=*, mark size=1.8pt] coordinates {(22.396,4.94e-324)};
 \node[font=\footnotesize, augRed, anchor=west, align=left]
   at (axis cs:23.2,1e-120) {underflow cliff\\ $\lambda\Delta t = 745.13$\\ (22.4 d)};
-\node[font=\footnotesize, augGrey, anchor=west] at (axis cs:8.2,1e-250) {representable};
 \end{semilogyaxis}
 \end{tikzpicture}
 \caption{The decay kernel over 32 days. At a 6-hour half-life nothing comes close
@@ -850,28 +858,27 @@ would collapse from the number of \emph{reads} to the number of \emph{requests}.
 
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}[font=\footnotesize, >={Latex[length=1.8mm]}]
-% lifelines
-\foreach \x/\name in {0/{Worker A}, 3.6/{\code{read\_budget}}, 7.2/{Worker B}} {
-  \node[draw, thick, fill=augGrey!8, minimum width=20mm, minimum height=5mm] (h\x) at (\x,0) {\name};
-  \draw[augGrey!60, dashed] (\x,-0.35) -- (\x,-5.0);
+\begin{tikzpicture}[font=\footnotesize, >={Latex[length=1.8mm]},
+  msg/.style={font=\scriptsize, inner sep=1.5pt},
+  note/.style={font=\scriptsize, fill=white, inner sep=2pt, align=center}]
+\foreach \x/\name in {0/{Worker A}, 4.3/{\code{read\_budget}}, 8.6/{Worker B}} {
+  \node[draw, thick, fill=augGrey!10, minimum width=22mm, minimum height=5mm] at (\x,0) {\name};
+  \draw[augGrey!55, dashed] (\x,-0.32) -- (\x,-7.0);
 }
-\def\naive{-0.9}
-% Naive read-then-write
-\node[anchor=west, font=\footnotesize\bfseries, augRed] at (-1.9,\naive+0.35) {Read-then-write (racy)};
-\draw[->, augRed] (0,\naive) -- node[above, font=\scriptsize] {SELECT} (3.6,\naive);
-\draw[->, augRed] (7.2,\naive-0.45) -- node[above, font=\scriptsize] {SELECT} (3.6,\naive-0.45);
-\node[annot, text=augRed, anchor=west] at (3.75,\naive-0.9) {both read \code{1900/2000} --- both see headroom};
-\draw[->, augRed] (0,\naive-1.35) -- node[above, font=\scriptsize] {+500} (3.6,\naive-1.35);
-\draw[->, augRed] (7.2,\naive-1.8) -- node[above, font=\scriptsize] {+500} (3.6,\naive-1.8);
-\node[annot, text=augRed, anchor=west] at (3.75,\naive-2.2) {\textbf{2900 / 2000} --- ceiling breached};
-
-\def\safe{-3.75}
-\node[anchor=west, font=\footnotesize\bfseries, augGreen] at (-1.9,\safe+0.35) {Single conditional upsert};
-\draw[->, augGreen] (0,\safe) -- node[above, font=\scriptsize] {\code{INSERT..ON CONFLICT}} (3.6,\safe);
-\draw[->, augGreen] (7.2,\safe-0.45) -- node[above, font=\scriptsize] {\code{INSERT..ON CONFLICT}} (3.6,\safe-0.45);
-\draw[<-, augGreen, dashed] (0,\safe-0.9) -- node[above, font=\scriptsize] {\code{RETURNING 2400}} (3.6,\safe-0.9);
-\draw[<-, augRed, dashed] (7.2,\safe-1.25) -- node[above, font=\scriptsize] {\code{0 rows} $\Rightarrow$ \code{BudgetExceeded}} (3.6,\safe-1.25);
+% ---- phase 1: racy
+\node[note, text=augRed, font=\scriptsize\bfseries] at (4.3,-0.72) {Read-then-write (racy)};
+\draw[->, augRed] (0,-1.25)   -- node[msg, above] {SELECT} (4.3,-1.25);
+\draw[->, augRed] (8.6,-1.80) -- node[msg, above] {SELECT} (4.3,-1.80);
+\node[note, text=augRed] at (4.3,-2.30) {both read \code{1900/2000} --- both see headroom};
+\draw[->, augRed] (0,-2.85)   -- node[msg, above] {\code{UPDATE +500}} (4.3,-2.85);
+\draw[->, augRed] (8.6,-3.40) -- node[msg, above] {\code{UPDATE +500}} (4.3,-3.40);
+\node[note, text=augRed] at (4.3,-3.92) {\textbf{2900 / 2000} --- ceiling breached};
+% ---- phase 2: atomic
+\node[note, text=augGreen, font=\scriptsize\bfseries] at (4.3,-4.70) {Single conditional upsert};
+\draw[->, augGreen] (0,-5.25)   -- node[msg, above] {\code{INSERT .. ON CONFLICT}} (4.3,-5.25);
+\draw[->, augGreen] (8.6,-5.80) -- node[msg, above] {\code{INSERT .. ON CONFLICT}} (4.3,-5.80);
+\draw[<-, augGreen, dashed] (0,-6.35) -- node[msg, above] {\code{RETURNING 2400}} (4.3,-6.35);
+\draw[<-, augRed, dashed] (8.6,-6.90) -- node[msg, above] {\code{0 rows} $\Rightarrow$ \code{BudgetExceeded}} (4.3,-6.90);
 \end{tikzpicture}
 \caption{Why the reservation must be one statement. The \code{WHERE} clause
 lives inside the upsert, so the check and the increment are a single atomic
@@ -971,8 +978,9 @@ ask only  & $67{,}296.1$ & $225{,}792$  & \$156{,}507 \\
   xlabel={YES shares bought}, ylabel={Simulated YES price},
   xmin=0, xmax=250000, ymin=0, ymax=1,
   scaled x ticks=false,
-  xticklabel style={/pgf/number format/fixed, /pgf/number format/1000 sep={,}},
-  legend pos=south east,
+  xtick={0,50000,100000,150000,200000,250000},
+  xticklabels={0,50k,100k,150k,200k,250k},
+  legend style={at={(0.985,0.60)}, anchor=north east},
 ]
 % p = sigmoid(logit(0.035) + n/b), anchored at the observed mid
 \addplot[augRed, domain=0:250000, samples=300]
@@ -985,10 +993,10 @@ ask only  & $67{,}296.1$ & $225{,}792$  & \$156{,}507 \\
   {1/(1+exp(-(ln(0.035/0.965) + x/225792)))};
 \addlegendentry{$b = 225{,}792$ \ (ask side)}
 \addplot[augGrey, dotted, line width=0.9pt] coordinates {(0,0.5) (250000,0.5)};
-\node[annot, anchor=west] at (axis cs:6000,0.86)
-  {$b=312$: \ $1{,}035$ shares reach $0.50$};
-\node[annot, anchor=west] at (axis cs:96000,0.28)
-  {$b=225{,}792$: \ $748{,}902$ shares needed};
+\node[annot, text=augRed, anchor=west] at (axis cs:9000,0.90)
+  {$b=312$: only $1{,}035$ shares reach $0.50$};
+\node[annot, text=augGreen, anchor=south west] at (axis cs:6000,0.055)
+  {$b=225{,}792$: $748{,}902$ shares for the same move};
 \end{axis}
 \end{tikzpicture}
 \caption{What the $723\times$ ambiguity actually costs. Each curve is the same
@@ -1057,23 +1065,22 @@ result reachable:
 
 \begin{figure}[t]
 \centering
-\begin{tikzpicture}[font=\footnotesize, x=0.115mm, y=1cm]
-\foreach \i/\o in {0/0, 1/24, 2/48, 3/72} {
-  \pgfmathsetmacro{\yy}{-\i*0.62}
-  \draw[fill=augBlue!18, draw=augBlue, thick] (\o*1,\yy) rectangle (\o*1+72,\yy+0.42);
-  \node[font=\scriptsize, augBlue!60!black] at (\o*1+36,\yy+0.21) {train (72)};
-  \draw[fill=augOrange!22, draw=augOrange, thick] (\o*1+72,\yy) rectangle (\o*1+96,\yy+0.42);
-  \node[font=\scriptsize, augOrange!60!black] at (\o*1+84,\yy+0.21) {test (24)};
-  \node[anchor=east, font=\scriptsize, augGrey] at (-4,\yy+0.21) {window \i};
-  % fitted params
-  \node[anchor=west, font=\scriptsize, augGrey] at (\o*1+100,\yy+0.21)
-    {$b_{\i}$, $\rho_{\i}$ fitted on train};
+\begin{tikzpicture}[x=0.075cm, y=1cm, font=\footnotesize]
+\foreach \i in {0,1,2,3} {
+  \pgfmathsetmacro{\off}{24*\i}
+  \pgfmathsetmacro{\yy}{-0.52*\i}
+  \draw[fill=augBlue!16, draw=augBlue, thick] (\off,\yy) rectangle (\off+72,\yy+0.36);
+  \node[font=\scriptsize, text=augBlue!55!black] at (\off+36,\yy+0.18) {train (72)};
+  \draw[fill=augOrange!22, draw=augOrange, thick] (\off+72,\yy) rectangle (\off+96,\yy+0.36);
+  \node[font=\scriptsize, text=augOrange!55!black] at (\off+84,\yy+0.18) {test};
+  \node[anchor=east, font=\scriptsize, text=augGrey] at (-6,\yy+0.18) {window \i};
+  \node[anchor=west, font=\scriptsize, text=augGrey] at (\off+100,\yy+0.18)
+    {$b_{\i},\ \rho_{\i}$};
 }
-\draw[{Latex[length=1.8mm]}-{Latex[length=1.8mm]}, augGrey] (0,-2.15) -- (96,-2.15)
-  node[midway, below, font=\scriptsize, augGrey] {step $=$ test size $\Rightarrow$ test windows never overlap};
-\draw[augGrey, dashed] (72,0.5) -- (72,-2.0);
-\node[anchor=south, font=\scriptsize, augGrey, align=center] at (170,0.48)
-  {calibration uses training-window books only};
+% step bracket
+\draw[{Latex[length=1.6mm]}-{Latex[length=1.6mm]}, augGrey] (0,-2.05) -- (24,-2.05);
+\node[anchor=west, font=\scriptsize, text=augGrey] at (28,-2.05)
+  {step $=$ test size, so test blocks never overlap};
 \end{tikzpicture}
 \caption{Walk-forward evaluation in the C++ engine. Each window fits $b$ from its
 own training-period order books and grid-searches responsiveness $\rho$ there,
@@ -1418,12 +1425,12 @@ which isolates every change below to the market side.}
 & 28 July 2026 & 3 August 2026 \\
 \midrule
 Market mid                & $0.0350$ & $0.0150$ \\
-Best bid $\times$ depth   & $0.03 \times 93$ & $0.01 \times 98{,}353$ \\
+Best bid $\times$ depth   & $0.03 \times 93$ & $0.01 \times 98{,}329$ \\
 Best ask $\times$ depth   & $0.04 \times 67{,}296$ & $0.02 \times 858{,}548$ \\
 Logit width               & $0.2980$ & $0.7033$ \\
 \midrule
-$b$ (bid side)            & $312$ & $139{,}846$ \\
-$b$ (mean)                & $113{,}052$ & $680{,}294$ \\
+$b$ (bid side)            & $312$ & $139{,}811$ \\
+$b$ (mean)                & $113{,}052$ & $680{,}277$ \\
 $b$ (ask side)            & $225{,}792$ & $1{,}000{,}000$\rlap{$^{\dagger}$} \\
 \midrule
 Latest $S(t)$             & $-0.559$ & $-0.559$ \\
@@ -1484,7 +1491,7 @@ representable in binary64. Set cardinality cannot tell the difference, so the
 looser guard sees ``two distinct values'', concludes the market moved, and
 computes a cross-correlation of $S(t)$ against floating-point noise. The
 resulting table (Figure~\ref{fig:ccf}, right) reports coefficients rising
-smoothly to $-0.369$ at lag $+6$ --- a clean, entirely spurious signal-leads-price
+smoothly to $-0.398$ at lag $+6$ --- a clean, entirely spurious signal-leads-price
 gradient, which is precisely the finding this project is built not to produce.
 
 The fix is to test the range against a tolerance rather than the cardinality of a
@@ -1503,9 +1510,9 @@ reported a $p$-value computed on noise.
   xmin=0, xmax=47, ymin=0, ymax=0.85,
   legend pos=north east, legend columns=1,
 ]
-\addplot[augBlue] table[x=hour, y=p_hat, col sep=comma] {data/series.csv};
+\addplot[augBlue, line width=1.1pt] table[x=hour, y=p_hat, col sep=comma] {data/series.csv};
 \addlegendentry{$\hat{p} = (S(t)+1)/2$ \ (signal)}
-\addplot[augGreen] table[x=hour, y=sim, col sep=comma] {data/series.csv};
+\addplot[augPurple, dashed, line width=1pt] table[x=hour, y=sim, col sep=comma] {data/series.csv};
 \addlegendentry{LMSR simulated price}
 \addplot[augOrange, line width=1.3pt] table[x=hour, y=market, col sep=comma] {data/series.csv};
 \addlegendentry{real Kalshi mid}
@@ -1547,7 +1554,7 @@ computed.}
   ybar, bar width=7pt,
 ]
 \addplot[fill=augRed!55, draw=augRed] coordinates
-  {(0,-0.1688) (1,-0.1793) (2,-0.1912) (3,-0.2048)};
+  {(0,-0.1770) (1,-0.1885) (2,-0.2016) (3,-0.2168)};
 \addplot[augGrey, sharp plot, update limits=false] coordinates {(-3.7,0) (3.7,0)};
 \node[annot, text=augRed, anchor=north east, align=right] at (axis cs:3.6,0.72)
   {spurious:\\ computed against\\ 6 ULPs of noise};
@@ -1573,10 +1580,11 @@ finding than the real data does.}
   ytick={1,2,3,4}, yticklabels={ask 3 Aug, bid 3 Aug, ask 28 Jul, bid 28 Jul},
   ymin=0.4, ymax=4.6,
   xbar, bar width=8pt,
-  nodes near coords, every node near coord/.append style={font=\scriptsize, /pgf/number format/fixed, /pgf/number format/1000 sep={,}},
+  point meta=explicit symbolic,
+  nodes near coords, every node near coord/.append style={font=\scriptsize},
 ]
-\addplot[fill=augOrange!65, draw=augOrange] coordinates {(858548,1) (98353,2)};
-\addplot[fill=augBlue!60, draw=augBlue] coordinates {(67296,3) (93,4)};
+\addplot[fill=augOrange!65, draw=augOrange] coordinates {(858548,1) [858,548] (98329,2) [98,329]};
+\addplot[fill=augBlue!60, draw=augBlue] coordinates {(67296,3) [67,296] (93,4) [93]};
 \end{semilogxaxis}
 \end{tikzpicture}
 \caption{Resting depth on each side of the book, both observations, on a log
@@ -1722,6 +1730,12 @@ Beyond that:
 \item \textbf{The LSH banding fix in Section~\ref{sec:ingest} is analysed, not
       applied.} Changing it invalidates stored bucket keys, so it requires a
       migration rather than a constant edit.
+\item \textbf{The degeneracy guards are inconsistent and both are unapplied
+      fixes.} Section~\ref{sec:obs2} shows the cross-correlation and Granger
+      paths disagreeing on whether a window is degenerate, because one tests
+      \code{len(set(prices))} against 2 and the other against 3. Both should
+      test the range against a tolerance. Until they do, any cross-correlation
+      reported on a near-static market is untrustworthy.
 \end{itemize}
 
 \section{Conclusion}
@@ -1752,7 +1766,19 @@ correct code, which no assertion is written to catch, and the third is a
 function that satisfies every test while contradicting its own docstring. Two
 surfaced from working the arithmetic out on paper and checking it against the
 source; the third from reading the implementation against the behaviour it
-advertises. That is an argument for writing the paper.
+advertises.
+
+The fourth was different, and it is the one that most justifies the exercise.
+Running the same command six days later on a market that had gone flat produced
+a cross-correlation table with a smooth gradient to $-0.398$ on the
+signal-leads-price side --- computed entirely against six units in the last
+place of floating-point rounding noise, because the guard tested the cardinality
+of a float set rather than the range of the series. The Granger path, testing
+the same question with a stricter threshold, refused correctly. Two guards over
+one question disagreed, and the looser one produced exactly the artifact this
+project exists not to produce. No amount of reasoning about the code surfaced
+that; it took running it on a day when the market had stopped moving. An
+instrument that is only ever reasoned about is not yet calibrated.
 
 The generalisable point is the one the null result makes available. On a
 question where the prior should be that the effect does not exist, an apparatus
@@ -1775,20 +1801,19 @@ Figures~\ref{fig:series}--\ref{fig:book}.
 
 \begin{lstlisting}[basicstyle=\ttfamily\scriptsize]
 ====================================================================
-AUGURY VERTICAL SLICE - kalshi:KXFEDDECISION-26SEP-C25
+AUGURY VERTICAL SLICE -- kalshi:KXFEDDECISION-26SEP-C25
 ====================================================================
   Will the Federal Reserve Cut rates by 25bps at their September 2026 meeting?
-  target: The Federal Reserve will cut interest rates by 25 basis points at
-          its September 2026 meeting.
+  target: The Federal Reserve will cut interest rates by 25 basis points at its September 2026 meeting.
   status: open
 
--- market data ------------------------------------------------------
+-- market data ---------------------------------------------------
   price bars fetched   : 277
   book                 : bid 0.01 / ask 0.020000000000000018  spread 0.0100
-  depth (bid/ask)      : 98353.33 / 858548.26
-  LMSR b (from depth)  : 680,294.47
+  depth (bid/ask)      : 98329.33 / 858548.26
+  LMSR b (from depth)  : 680,277.41
 
--- social signal ----------------------------------------------------
+-- social signal -------------------------------------------------
   post source          : FIXTURE REPLAY (no live X reads, no cost)
   posts                : 12
   stance model         : vader-3.3.2
@@ -1796,22 +1821,21 @@ AUGURY VERTICAL SLICE - kalshi:KXFEDDECISION-26SEP-C25
   S(t) points          : 48
   latest S(t)          : -0.5589  (p_hat 0.2205, 11 posts, half-life 6.00h)
 
--- synthetic LMSR market --------------------------------------------
+-- synthetic LMSR market -----------------------------------------
   sim ticks            : 48
-  sim price            : 0.0890 -> 0.2204
-  real market mid      : 0.0150  (gap +0.2054)
+  sim price            : 0.0890 -> 0.2218
+  real market mid      : 0.0150  (gap +0.2068)
 
--- lead-lag ---------------------------------------------------------
-  strongest |r|        : -0.3686 at lag +6h (signal leads, n=33)
-    lag +0h  r = -0.1688  (contemporaneous)
-    lag +1h  r = -0.1793  (signal leads)
-    lag +2h  r = -0.1912  (signal leads)
-    lag +3h  r = -0.2048  (signal leads)
-  Granger              : market price is nearly constant over this window
-                         - the test is degenerate
+-- lead-lag ------------------------------------------------------
+  strongest |r|        : -0.3981 at lag +6h (signal leads, n=33)
+    lag +0h  r = -0.1770  (contemporaneous)
+    lag +1h  r = -0.1885  (signal leads)
+    lag +2h  r = -0.2016  (signal leads)
+    lag +3h  r = -0.2168  (signal leads)
+  Granger              : market price is nearly constant over this window -- the test is degenerate
 
--- calibration ------------------------------------------------------
-  market has not resolved yet - Brier/BSS deferred to the watcher
+-- calibration ---------------------------------------------------
+  market has not resolved yet -- Brier/BSS deferred to the watcher
 
 ====================================================================
 Posts were replayed from fixtures. These numbers exercise the pipeline;
@@ -1821,7 +1845,7 @@ they are not evidence about the real relationship between X and this market.
 
 Two lines are worth reading against each other. The Granger block refuses to
 report a number and says why. Four lines above it, the cross-correlation block
-reports a monotone gradient to $-0.369$ labelled \emph{signal leads} --- on the
+reports a monotone gradient to $-0.398$ labelled \emph{signal leads} --- on the
 same data, from the same window, with no such warning. That contrast is the
 defect of Section~\ref{sec:obs2} as the tool actually prints it.
 
