@@ -332,6 +332,41 @@ Half-life & Post age & $\lambda \Delta t$ & $e^{-\lambda \Delta t}$ \\
 \end{tabular}
 \end{table}
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{semilogyaxis}[
+  augbase, height=5.4cm,
+  xlabel={Post age (days)}, ylabel={$e^{-\lambda \Delta t}$},
+  xmin=0, xmax=32, ymin=1e-330, ymax=5,
+  ytick={1e0,1e-50,1e-100,1e-150,1e-200,1e-250,1e-300},
+  legend pos=south west,
+]
+% 6-hour half-life
+\addplot[augBlue, domain=0.01:32, samples=200]
+  {exp(-0.693147/6 * x * 24)};
+\addlegendentry{6\,h half-life}
+% 30-minute half-life
+\addplot[augOrange, domain=0.01:22.396, samples=200]
+  {exp(-0.693147/0.5 * x * 24)};
+\addlegendentry{30\,min half-life}
+% the cliff
+\addplot[augRed, dashed, line width=1pt] coordinates {(22.396,1e-330) (22.396,5)};
+\addplot[augRed, only marks, mark=*, mark size=1.8pt] coordinates {(22.396,4.94e-324)};
+\node[font=\footnotesize, augRed, anchor=west, align=left]
+  at (axis cs:23.2,1e-120) {underflow cliff\\ $\lambda\Delta t = 745.13$\\ (22.4 d)};
+\node[font=\footnotesize, augGrey, anchor=west] at (axis cs:8.2,1e-250) {representable};
+\end{semilogyaxis}
+\end{tikzpicture}
+\caption{The decay kernel over 32 days. At a 6-hour half-life nothing comes close
+to the boundary. At the 30-minute half-life the adaptive path can reach, the
+kernel falls off the representable range entirely at 22.4 days --- the orange
+curve simply stops, because beyond that point every term in both sums of
+Eq.~\ref{eq:signal} is exactly zero and the naive ratio is $0/0$. The widely
+quoted $e^{-233}$ at one week sits at $10^{-102}$, nowhere near the cliff.}
+\label{fig:underflow}
+\end{figure}
+
 The guard is still necessary, and the shipped test data proves it. The golden
 vector named \code{extreme\_age} evaluates a 30-day-old post at a 30-minute
 half-life, giving $\lambda \Delta t = 998$. Its recorded expectations are
