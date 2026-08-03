@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.7.28)  3 AUG 2026 12:33
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (MiKTeX 25.12) (preloaded format=pdflatex 2026.7.28)  3 AUG 2026 12:36
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -976,7 +976,7 @@ File: pgflibrarypatterns.code.tex 2025-08-29 v3.1.11a (3.1.11a)
 ))
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/generic/pgfplots/libs\tikzlib
 rarypgfplots.colormaps.code.tex)
-LaTeX Font Info:    Trying to load font information for T1+lmr on input line 76
+LaTeX Font Info:    Trying to load font information for T1+lmr on input line 81
 .
 
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/latex/lm\t1lmr.fd
@@ -989,24 +989,24 @@ File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
 ) (augury.aux)
 \openout1 = `augury.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 76.
-LaTeX Font Info:    ... okay on input line 76.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 76.
-LaTeX Font Info:    ... okay on input line 76.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 76.
-LaTeX Font Info:    ... okay on input line 76.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 76.
-LaTeX Font Info:    ... okay on input line 76.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 76.
-LaTeX Font Info:    ... okay on input line 76.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 76.
-LaTeX Font Info:    ... okay on input line 76.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 76.
-LaTeX Font Info:    ... okay on input line 76.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 76.
-LaTeX Font Info:    ... okay on input line 76.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 76.
-LaTeX Font Info:    ... okay on input line 76.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 81.
+LaTeX Font Info:    ... okay on input line 81.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 81.
+LaTeX Font Info:    ... okay on input line 81.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 81.
+LaTeX Font Info:    ... okay on input line 81.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 81.
+LaTeX Font Info:    ... okay on input line 81.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 81.
+LaTeX Font Info:    ... okay on input line 81.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 81.
+LaTeX Font Info:    ... okay on input line 81.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 81.
+LaTeX Font Info:    ... okay on input line 81.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 81.
+LaTeX Font Info:    ... okay on input line 81.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 81.
+LaTeX Font Info:    ... okay on input line 81.
 
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
@@ -1042,13 +1042,13 @@ LaTeX Font Info:    ... okay on input line 76.
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-LaTeX Info: Redefining \microtypecontext on input line 76.
-Package microtype Info: Applying patch `item' on input line 76.
-Package microtype Info: Applying patch `toc' on input line 76.
-Package microtype Info: Applying patch `eqnum' on input line 76.
-Package microtype Info: Applying patch `footnote' on input line 76.
-Package microtype Info: Applying patch `verbatim' on input line 76.
-LaTeX Info: Redefining \microtypesetup on input line 76.
+LaTeX Info: Redefining \microtypecontext on input line 81.
+Package microtype Info: Applying patch `item' on input line 81.
+Package microtype Info: Applying patch `toc' on input line 81.
+Package microtype Info: Applying patch `eqnum' on input line 81.
+Package microtype Info: Applying patch `footnote' on input line 81.
+Package microtype Info: Applying patch `verbatim' on input line 81.
+LaTeX Info: Redefining \microtypesetup on input line 81.
 Package microtype Info: Generating PDF output.
 Package microtype Info: Character protrusion enabled (level 2).
 Package microtype Info: Using default protrusion set `alltext'.
@@ -1095,42 +1095,42 @@ s been generated with the most recent feature set (\pgfplotsset{compat=1.18}).
 Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: hyperref package is loaded.
 Package caption Info: End \AtBeginDocument code.
-Package hyperref Info: Link coloring OFF on input line 76.
+Package hyperref Info: Link coloring OFF on input line 81.
 (augury.out) (augury.out)
 \@outlinefile=\write4
 \openout4 = `augury.out'.
 
-LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 7
-8.
+LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 8
+3.
 
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/latex/lm\ot1lmr.fd
 File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OML+lmm on input line 7
-8.
+LaTeX Font Info:    Trying to load font information for OML+lmm on input line 8
+3.
 
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/latex/lm\omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 
-78.
+83.
 
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/latex/lm\omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 
-78.
+83.
 
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/latex/lm\omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <12> on input line 78.
+(Font)              <12> on input line 83.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <8> on input line 78.
+(Font)              <8> on input line 83.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <6> on input line 78.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 78.
+(Font)              <6> on input line 83.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 83.
 
 
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa.fd
@@ -1139,7 +1139,7 @@ File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/latex/microtype\mt-msa.cfg
 File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 78.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 83.
 
 
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd
@@ -1149,15 +1149,15 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 88.
+(Font)              <10> on input line 93.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 88.
+(Font)              <7> on input line 93.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 88.
+(Font)              <5> on input line 93.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10.95> on input line 111.
+(Font)              <10.95> on input line 116.
 LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 1
-19.
+24.
 
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/latex/lm\ts1lmr.fd
 File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
@@ -1170,7 +1170,7 @@ pData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-rm.enc}{C:/Users/smpar/AppDat
 a/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathsy.enc}{C:/Users/smpar/AppDat
 a/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ts1.enc}]
 LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 1
-81.
+86.
 
 (C:\Users\smpar\AppData\Local\Programs\MiKTeX\tex/latex/lm\t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
@@ -1181,112 +1181,177 @@ Package microtype Info: Loading generic protrusion settings for font family
 (microtype)             See the microtype manual for details.
  [2]
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <9> on input line 237.
+(Font)              <9> on input line 242.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <14.4> on input line 267.
+(Font)              <14.4> on input line 272.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 267.
+(hyperref)                removing `math shift' on input line 272.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 267.
+(hyperref)                removing `math shift' on input line 272.
 
 [3{C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathex.en
 c}]
-Package pgfplots info on input line 344: Using 'lua backend=false' for axis: ym
+Package pgfplots info on input line 349: Using 'lua backend=false' for axis: ym
 ode=log unsupported (yet).
  [4]
 PGFPlots: reading {data/halflife_grid.csv}
 
-Underfull \hbox (badness 1371) in paragraph at lines 464--464
+Underfull \hbox (badness 1371) in paragraph at lines 469--469
 []\T1/lmr/m/n/10 (+20) Figure 3: |Ef-fec-tive half-life as a func-tion of the t
 wo adap-tive trig-gers, eval-u-ated by call-ing
  []
 
 [5] [6]
 Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on in
-put line 549.
+put line 554.
 Package microtype Info: Character `029' is missing
 (microtype)             in font `T1/lmr/m/sc/10.95'.
 (microtype)             Ignoring protrusion settings for this character.
  [7] [8]
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 738.
+(hyperref)                removing `math shift' on input line 743.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 738.
+(hyperref)                removing `math shift' on input line 743.
 
-[9] [10] [11] [12] [13] [14]
-Underfull \hbox (badness 10000) in paragraph at lines 1143--1143
+[9] [10] [11] [12] [13] [14] [15]
+
+LaTeX Warning: Reference `tab:obs' on page 16 undefined on input line 1170.
+
+
+LaTeX Warning: Reference `tab:obs' on page 16 undefined on input line 1213.
+
+
+LaTeX Warning: Reference `fig:book' on page 16 undefined on input line 1216.
+
+[16]
+
+LaTeX Warning: Reference `fig:ccf' on page 17 undefined on input line 1250.
+
+PGFPlots: reading {data/series.csv}
+PGFPlots: reading {data/series.csv}
+PGFPlots: reading {data/series.csv}
+NOTE: coordinate (3.0,) has been dropped because of a coordinate filter. (see a
+lso unbounded coords=jump). 
+NOTE: coordinate (14.0,) has been dropped because of a coordinate filter. (see 
+also unbounded coords=jump). 
+NOTE: coordinate (17.0,) has been dropped because of a coordinate filter. (see 
+also unbounded coords=jump). 
+NOTE: coordinate (18.0,) has been dropped because of a coordinate filter. (see 
+also unbounded coords=jump). 
+NOTE: coordinate (24.0,) has been dropped because of a coordinate filter. (see 
+also unbounded coords=jump). 
+NOTE: coordinate (26.0,) has been dropped because of a coordinate filter. (see 
+also unbounded coords=jump). 
+NOTE: coordinate (27.0,) has been dropped because of a coordinate filter. (see 
+also unbounded coords=jump). 
+NOTE: coordinate (28.0,) has been dropped because of a coordinate filter. (see 
+also unbounded coords=jump). 
+NOTE: coordinate (43.0,) has been dropped because of a coordinate filter. (see 
+also unbounded coords=jump). 
+
+LaTeX Warning: Reference `fig:ccf' on page 17 undefined on input line 1284.
+
+
+LaTeX Warning: Reference `fig:ccf' on page 17 undefined on input line 1284.
+
+Package pgfplots info on input line 1341: Using 'lua backend=false' for axis: x
+mode=log unsupported (yet).
+
+Underfull \hbox (badness 10000) in paragraph at lines 1374--1374
 []|\T1/lmr/m/n/10 (+20) Java
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1147--1147
+Underfull \hbox (badness 10000) in paragraph at lines 1378--1378
 []|\T1/lmr/m/n/10 (+20) Rust \T1/lmtt/m/n/10 ReadBudget::
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1153--1154
+Underfull \hbox (badness 10000) in paragraph at lines 1384--1385
 []|\T1/lmr/m/n/10 (+20) Five miss-ing stan-dard head-ers
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1153--1154
+Underfull \hbox (badness 10000) in paragraph at lines 1384--1385
 \T1/lmr/m/n/10 (+20) (\T1/lmtt/m/n/10 <cstdint>\T1/lmr/m/n/10 (+20) , \T1/lmtt/
 m/n/10 <limits>\T1/lmr/m/n/10 (+20) , \T1/lmtt/m/n/10 <string>\T1/lmr/m/n/10 (+
 20) ,
  []
 
-[15] [16] [17] [18] (augury.aux)
+[17] [18] [19] [20] [21] (augury.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2025-12-24>
  ***********
-Package rerunfilecheck Info: File `augury.out' has not changed.
-(rerunfilecheck)             Checksum: 93191F6AA6140C1EE7DDF984A338326F;5126.
+
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+
+Package rerunfilecheck Warning: File `augury.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `augury.out':
+(rerunfilecheck)             Before: 93191F6AA6140C1EE7DDF984A338326F;5126
+(rerunfilecheck)             After:  2DCED24D9C2033935457E1A1EAA430DC;5381.
  ) 
 Here is how much of TeX's memory you used:
- 39894 strings out of 467871
- 906210 string characters out of 5418376
- 1762856 words of memory out of 5000000
- 67673 multiletter control sequences out of 15000+600000
- 768819 words of font info for 304 fonts, out of 8000000 for 9000
+ 40105 strings out of 467871
+ 910402 string characters out of 5418376
+ 1763129 words of memory out of 5000000
+ 67839 multiletter control sequences out of 15000+600000
+ 774490 words of font info for 319 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  84i,19n,94p,1005b,2686s stack positions out of 10000i,1000n,20000p,200000b,200000s
-<C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx10.pf
-b><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx12.pf
-b><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx9.pfb
-><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmcsc10.pf
-b><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmex10.pf
-b><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi10.pf
-b><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi12.pf
-b><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi6.pfb
-><C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi7.pfb>
-<C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi8.pfb><
-C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi9.pfb><C
-:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr10.pfb><C:
-/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr12.pfb><C:/
-Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr17.pfb><C:/U
-sers/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr6.pfb><C:/Use
-rs/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr7.pfb><C:/Users
-/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr8.pfb><C:/Users/s
-mpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr9.pfb><C:/Users/smp
-ar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmri10.pfb><C:/Users/smp
-ar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy10.pfb><C:/Users/smp
-ar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy6.pfb><C:/Users/smpa
-r/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy7.pfb><C:/Users/smpar
-/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy8.pfb><C:/Users/smpar/
-AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy9.pfb><C:/Users/smpar/A
-ppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt10.pfb><C:/Users/smpar/A
-ppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt9.pfb>
-Output written on augury.pdf (18 pages, 631066 bytes).
+
+pdfTeX warning (dest): name{table.caption.18} has been referenced but does not 
+exist, replaced by a fixed one
+
+
+pdfTeX warning (dest): name{table.caption.14} has been referenced but does not 
+exist, replaced by a fixed one
+
+<C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx10.pfb>
+<C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx12.pfb>
+<C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx9.pfb><
+C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmcsc10.pfb>
+<C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmex10.pfb>
+<C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi10.pfb>
+<C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi12.pfb>
+<C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi6.pfb><
+C:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi7.pfb><C
+:/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi8.pfb><C:
+/Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmmi9.pfb><C:/
+Users/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr10.pfb><C:/U
+sers/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr12.pfb><C:/Us
+ers/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr17.pfb><C:/Use
+rs/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr6.pfb><C:/Users
+/smpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr7.pfb><C:/Users/s
+mpar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr8.pfb><C:/Users/smp
+ar/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmr9.pfb><C:/Users/smpar
+/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmri10.pfb><C:/Users/smpar
+/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmri9.pfb><C:/Users/smpar/
+AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy10.pfb><C:/Users/smpar/
+AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy6.pfb><C:/Users/smpar/A
+ppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy7.pfb><C:/Users/smpar/Ap
+pData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy8.pfb><C:/Users/smpar/App
+Data/Local/Programs/MiKTeX/fonts/type1/public/lm/lmsy9.pfb><C:/Users/smpar/AppD
+ata/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt10.pfb><C:/Users/smpar/AppD
+ata/Local/Programs/MiKTeX/fonts/type1/public/lm/lmtt9.pfb>
+Output written on augury.pdf (21 pages, 678683 bytes).
 PDF statistics:
- 480 PDF objects out of 1000 (max. 8388607)
- 102 named destinations out of 1000 (max. 500000)
- 80633 words of extra memory for PDF output out of 89155 (max. 10000000)
+ 519 PDF objects out of 1000 (max. 8388607)
+ 116 named destinations out of 1000 (max. 500000)
+ 82681 words of extra memory for PDF output out of 89155 (max. 10000000)
 

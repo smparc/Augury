@@ -51,6 +51,11 @@
   augsmall/.style={augbase, width=0.46\textwidth, height=4.4cm},
 }
 
+% In-plot annotation that stays readable on any background.
+\tikzset{
+  annot/.style={font=\footnotesize, align=left, fill=white, fill opacity=0.82,
+                text opacity=1, inner sep=1.5pt, rounded corners=1pt},
+}
 \newcommand{\figcite}[1]{{\footnotesize\itshape Source: #1}}
 
 \lstset{
@@ -450,9 +455,9 @@ thirty posts.
 % trigger thresholds
 \addplot3[augRed, dashed, line width=0.9pt] coordinates {(0,0.05,10) (60,0.05,10)};
 \addplot3[augRed, dashed, line width=0.9pt] coordinates {(15,0,10) (15,0.25,10)};
-\node[font=\footnotesize, white, anchor=west] at (axis cs:1,0.015,10) {baseline: 6.00\,h};
-\node[font=\footnotesize, augRed, anchor=south west] at (axis cs:0.6,0.052,10) {$\theta = 0.05$};
-\node[font=\footnotesize, augRed, anchor=south west, rotate=90] at (axis cs:15.6,0.10,10) {$\kappa r_{\text{base}} = 15$};
+\node[annot, anchor=south west] at (axis cs:0.8,0.005,10) {baseline plateau: 6.00\,h};
+\node[annot, text=augRed, anchor=south west] at (axis cs:34,0.052,10) {$\theta = 0.05$};
+\node[annot, text=augRed, anchor=south west] at (axis cs:16,0.20,10) {$\kappa r_{\text{base}} = 15$};
 \end{axis}
 \end{tikzpicture}
 \caption{Effective half-life as a function of the two adaptive triggers,
@@ -787,6 +792,43 @@ ask only  & $67{,}296.1$ & $225{,}792$  & \$156{,}507 \\
 \end{tabular}
 \end{table}
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  augbase, height=5.2cm,
+  xlabel={YES shares bought}, ylabel={Simulated YES price},
+  xmin=0, xmax=250000, ymin=0, ymax=1,
+  scaled x ticks=false,
+  xticklabel style={/pgf/number format/fixed, /pgf/number format/1000 sep={,}},
+  legend pos=south east,
+]
+% p = sigmoid(logit(0.035) + n/b), anchored at the observed mid
+\addplot[augRed, domain=0:250000, samples=300]
+  {1/(1+exp(-(ln(0.035/0.965) + x/312)))};
+\addlegendentry{$b = 312$ \ (bid side)}
+\addplot[augBlue, domain=0:250000, samples=300]
+  {1/(1+exp(-(ln(0.035/0.965) + x/113052)))};
+\addlegendentry{$b = 113{,}052$ \ (mean)}
+\addplot[augGreen, domain=0:250000, samples=300]
+  {1/(1+exp(-(ln(0.035/0.965) + x/225792)))};
+\addlegendentry{$b = 225{,}792$ \ (ask side)}
+\addplot[augGrey, dotted, line width=0.9pt] coordinates {(0,0.5) (250000,0.5)};
+\node[annot, anchor=west] at (axis cs:6000,0.86)
+  {$b=312$: \ $1{,}035$ shares reach $0.50$};
+\node[annot, anchor=west] at (axis cs:96000,0.28)
+  {$b=225{,}792$: \ $748{,}902$ shares needed};
+\end{axis}
+\end{tikzpicture}
+\caption{What the $723\times$ ambiguity actually costs. Each curve is the same
+LMSR anchored at the observed mid of $0.035$, differing only in which side of the
+book $b$ was calibrated from. On the bid-side calibration a retail-sized order
+moves the synthetic market across its whole range; on the ask-side calibration
+no realistic trade moves it at all. The simulation's entire character is
+determined by a choice the data does not settle.}
+\label{fig:bimpact}
+\end{figure}
+
 A $723\times$ spread in the single parameter that governs how responsive the
 simulated market is cannot be resolved by picking a default and moving on. The
 default here averages both sides, which is symmetric but not obviously correct;
@@ -1058,8 +1100,10 @@ positions and mistake agreement for insight.
 
 The \code{slice} subcommand executes the entire chain in memory --- poll, ingest,
 score, aggregate, simulate, analyse --- with no database and no billable API
-calls. Table~\ref{tab:slice} reports a live run against
-\code{kalshi:KXFEDDECISION-26SEP-C25} on 28 July 2026.
+calls. It was run twice against \code{kalshi:KXFEDDECISION-26SEP-C25}, six days
+apart. The second run was not planned; it was executed to produce the figures in
+this section, and what it found is more informative than what it was for.
+Table~\ref{tab:slice} reports the first.
 
 \begin{table}[t]
 \centering
@@ -1119,6 +1163,193 @@ second is that this run used the VADER lexicon rather than the NLI model, so the
 stance scores are sentiment, not stance, and the sign is untrustworthy on exactly
 the phrasing Section~\ref{sec:stance} describes.
 
+\subsection{A second observation, six days later}
+\label{sec:obs2}
+
+Re-running the identical command on 3 August produced a materially different
+picture (Table~\ref{tab:obs}). The market had drifted from $0.035$ to $0.015$ and
+then stopped moving; the book had thickened by three orders of magnitude on both
+sides. Nothing in the code changed. Everything downstream did.
+
+\begin{table}[t]
+\centering
+\caption{The same command, the same market, six days apart. Only the venue data
+differs. The fixture-replayed signal is deterministic and reproduces exactly,
+which isolates every change below to the market side.}
+\label{tab:obs}
+\small
+\begin{tabular}{@{}lrr@{}}
+\toprule
+& 28 July 2026 & 3 August 2026 \\
+\midrule
+Market mid                & $0.0350$ & $0.0150$ \\
+Best bid $\times$ depth   & $0.03 \times 93$ & $0.01 \times 98{,}353$ \\
+Best ask $\times$ depth   & $0.04 \times 67{,}296$ & $0.02 \times 858{,}548$ \\
+Logit width               & $0.2980$ & $0.7033$ \\
+\midrule
+$b$ (bid side)            & $312$ & $139{,}846$ \\
+$b$ (mean)                & $113{,}052$ & $680{,}294$ \\
+$b$ (ask side)            & $225{,}792$ & $1{,}000{,}000$\rlap{$^{\dagger}$} \\
+\midrule
+Latest $S(t)$             & $-0.559$ & $-0.559$ \\
+LMSR path end             & $0.220$ & $0.220$ \\
+Distinct prices in window & 22 & \textbf{2} \\
+Granger $S \to P$         & $F=1.003$, $p=0.463$ & \textbf{refused (degenerate)} \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+{\footnotesize $^{\dagger}$ clamped at \code{B\_MAX}; the uncapped value is
+$1{,}220{,}700$.}
+\end{table}
+
+Three things follow, and they are the most useful empirical results in this
+paper.
+
+\paragraph{The liquidity calibration is not stable.} $b$ moved by a factor of six
+on the mean side, and on the ask side it left the representable band entirely and
+hit the \code{B\_MAX} clamp of $10^{6}$. Section~\ref{sec:lmsr} argued from
+Table~\ref{tab:depth} that the choice of \emph{side} was worth $723\times$;
+Table~\ref{tab:obs} adds that the choice of \emph{day} is worth another $6\times$
+on top of it. The C++ backtester's coefficient-of-variation warning was written
+against exactly this failure, and two observations are already enough to trip it.
+Figure~\ref{fig:book} shows why: on this market the book is not merely lopsided,
+it is lopsided by a different amount every time it is sampled.
+
+\paragraph{The degeneracy guard fired, and it was right to.} With the market
+pinned at $0.015$ for the whole window, the Granger path refused to run and
+printed \emph{``market price is nearly constant over this window --- the test is
+degenerate''} instead of a $p$-value. This is the behaviour
+Section~\ref{sec:econ} was designed for, observed rather than asserted:
+the honest output on this data is no number at all.
+
+\paragraph{But the cross-correlation did not refuse, and it should have.} This is
+a defect, and unlike those in Table~\ref{tab:defects} it is a runtime one. Both
+guards test how many distinct prices the window holds, but they disagree on this
+data:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Guard & Condition & Outcome \\
+\midrule
+Cross-correlation & \code{len(set(prices)) < 2} & does \emph{not} fire --- CCF runs \\
+Granger           & \code{len(set(prices)) < 3} & fires --- test correctly skipped \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The window contains two distinct \code{float} values, $0.015$ and
+$0.01500000000000001$, which differ by $1.04 \times 10^{-17}$ --- six units in
+the last place. They are not two prices. They are one price and a rounding
+artifact, produced because the YES ask is derived as $1 - 0.98$, which is not
+representable in binary64. Set cardinality cannot tell the difference, so the
+looser guard sees ``two distinct values'', concludes the market moved, and
+computes a cross-correlation of $S(t)$ against floating-point noise. The
+resulting table (Figure~\ref{fig:ccf}, right) reports coefficients rising
+smoothly to $-0.369$ at lag $+6$ --- a clean, entirely spurious signal-leads-price
+gradient, which is precisely the finding this project is built not to produce.
+
+The fix is to test the range against a tolerance rather than the cardinality of a
+float set --- \code{ptp(prices) < 1e-9} --- and to apply the same threshold in
+both places, since there is no reason for two guards over the same question to
+disagree. It is worth noting how narrowly this was caught: had the market moved
+one tick more, the Granger guard would have passed too, and the run would have
+reported a $p$-value computed on noise.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  augbase, height=5.4cm,
+  xlabel={Hours since first signal point}, ylabel={Probability},
+  xmin=0, xmax=47, ymin=0, ymax=0.85,
+  legend pos=north east, legend columns=1,
+]
+\addplot[augBlue] table[x=hour, y=p_hat, col sep=comma] {data/series.csv};
+\addlegendentry{$\hat{p} = (S(t)+1)/2$ \ (signal)}
+\addplot[augGreen] table[x=hour, y=sim, col sep=comma] {data/series.csv};
+\addlegendentry{LMSR simulated price}
+\addplot[augOrange, line width=1.3pt] table[x=hour, y=market, col sep=comma] {data/series.csv};
+\addlegendentry{real Kalshi mid}
+\node[annot, text=augOrange, anchor=west] at (axis cs:14,0.075)
+  {real market: flat at $0.015$ for all 48 bars};
+\end{axis}
+\end{tikzpicture}
+\caption{The 3 August run, plotted from \code{paper/data/series.csv}. The signal
+moves across most of the unit interval and the LMSR integrates it; the real
+market does not move at all. The orange line is not a plotting artifact --- it is
+the entire basis on which the cross-correlation in Figure~\ref{fig:ccf} was
+computed.}
+\label{fig:series}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  augsmall, title={28 July --- market moving},
+  xlabel={Lag (hours)}, ylabel={Correlation},
+  xmin=-3.7, xmax=3.7, ymin=-0.2, ymax=0.75,
+  xtick={-3,-2,-1,0,1,2,3},
+  ybar, bar width=7pt,
+]
+\addplot[fill=augBlue!70, draw=augBlue] coordinates
+  {(-3,0.6576) (-2,0.4605) (-1,0.3452) (0,0.2569) (1,0.1068) (2,0.0374) (3,-0.0353)};
+\addplot[augGrey, sharp plot, update limits=false] coordinates {(-3.7,0) (3.7,0)};
+\node[annot, anchor=north east] at (axis cs:3.6,0.72) {peak at $-3$\,h:\\ \emph{price leads}};
+\end{axis}
+\end{tikzpicture}%
+\hfill
+\begin{tikzpicture}
+\begin{axis}[
+  augsmall, title={3 August --- market flat},
+  xlabel={Lag (hours)}, ylabel={Correlation},
+  xmin=-3.7, xmax=3.7, ymin=-0.4, ymax=0.75,
+  xtick={-3,-2,-1,0,1,2,3},
+  ybar, bar width=7pt,
+]
+\addplot[fill=augRed!55, draw=augRed] coordinates
+  {(0,-0.1688) (1,-0.1793) (2,-0.1912) (3,-0.2048)};
+\addplot[augGrey, sharp plot, update limits=false] coordinates {(-3.7,0) (3.7,0)};
+\node[annot, text=augRed, anchor=north east, align=right] at (axis cs:3.6,0.72)
+  {spurious:\\ computed against\\ 6 ULPs of noise};
+\node[annot, anchor=south, font=\scriptsize] at (axis cs:-2,-0.33) {undefined};
+\end{axis}
+\end{tikzpicture}
+\caption{Cross-correlation of $S(t)$ against price, both runs, lags $-3$ to $+3$.
+Left: a real gradient peaking on the \emph{price-leads} side, the direction that
+falsifies the hypothesis. Right: the same computation on a market that never
+moved, which the guard failed to reject. The right panel is not a weaker version
+of the left one --- it is a measurement of nothing, and it looks more like a
+finding than the real data does.}
+\label{fig:ccf}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{semilogxaxis}[
+  augbase, height=4.4cm,
+  xlabel={Resting depth (shares, log scale)},
+  xmin=30, xmax=3e6,
+  ytick={1,2,3,4}, yticklabels={ask 3 Aug, bid 3 Aug, ask 28 Jul, bid 28 Jul},
+  ymin=0.4, ymax=4.6,
+  xbar, bar width=8pt,
+  nodes near coords, every node near coord/.append style={font=\scriptsize, /pgf/number format/fixed, /pgf/number format/1000 sep={,}},
+]
+\addplot[fill=augOrange!65, draw=augOrange] coordinates {(858548,1) (98353,2)};
+\addplot[fill=augBlue!60, draw=augBlue] coordinates {(67296,3) (93,4)};
+\end{semilogxaxis}
+\end{tikzpicture}
+\caption{Resting depth on each side of the book, both observations, on a log
+axis. On 28 July the two sides differed by $723\times$; on 3 August by
+$8.7\times$, with both sides three orders of magnitude thicker. Equation~\ref{eq:calib}
+turns each of these bars directly into a liquidity parameter, which is why $b$ is
+not reproducible across days.}
+\label{fig:book}
+\end{figure}
 \section{Defects Found by Review}
 
 A full correctness review was run over the codebase. Table~\ref{tab:defects}

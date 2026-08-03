@@ -45,41 +45,56 @@
 \newlabel{eq:logitid}{{7}{9}{The LMSR Synthetic Market}{equation.7}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Depth calibration on a live Kalshi book: bid $0.03 \times 93$, ask $0.04 \times 67{,}296$. The logit width is $0.2980$. The choice of side changes $b$ by a factor of $723$.}}{10}{table.caption.9}\protected@file@percent }
 \newlabel{tab:depth}{{4}{10}{Depth calibration on a live Kalshi book: bid $0.03 \times 93$, ask $0.04 \times 67{,}296$. The logit width is $0.2980$. The choice of side changes $b$ by a factor of $723$}{table.caption.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces What the $723\times $ ambiguity actually costs. Each curve is the same LMSR anchored at the observed mid of $0.035$, differing only in which side of the book $b$ was calibrated from. On the bid-side calibration a retail-sized order moves the synthetic market across its whole range; on the ask-side calibration no realistic trade moves it at all. The simulation's entire character is determined by a choice the data does not settle.}}{10}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:bimpact}{{5}{10}{What the $723\times $ ambiguity actually costs. Each curve is the same LMSR anchored at the observed mid of $0.035$, differing only in which side of the book $b$ was calibrated from. On the bid-side calibration a retail-sized order moves the synthetic market across its whole range; on the ask-side calibration no realistic trade moves it at all. The simulation's entire character is determined by a choice the data does not settle}{figure.caption.10}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Calibrating $b$ from observed depth}{10}{subsection.6.1}\protected@file@percent }
 \newlabel{eq:calib}{{8}{10}{Calibrating $b$ from observed depth}{equation.8}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Real books are severely lopsided}{10}{subsection.6.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Numerical stability, stated precisely}{10}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Numerical stability, stated precisely}{11}{subsection.6.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Walk-forward backtesting}{11}{subsection.6.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {7}Econometrics}{11}{section.7}\protected@file@percent }
-\newlabel{sec:econ}{{7}{11}{Econometrics}{section.7}{}}
-\@writefile{toc}{\contentsline {paragraph}{Logit transform.}{11}{section*.10}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Stationarity is tested, not assumed.}{12}{section*.11}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Alignment is a fixed convention, not a parameter.}{12}{section*.12}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Multiple comparisons.}{12}{section*.13}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Forecast calibration}{12}{subsection.7.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Golden-vector inventory. Each case fixes inputs and the expected output of the Python reference.}}{13}{table.caption.14}\protected@file@percent }
-\newlabel{tab:golden}{{5}{13}{Golden-vector inventory. Each case fixes inputs and the expected output of the Python reference}{table.caption.14}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Econometrics}{12}{section.7}\protected@file@percent }
+\newlabel{sec:econ}{{7}{12}{Econometrics}{section.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Logit transform.}{12}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Stationarity is tested, not assumed.}{12}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Alignment is a fixed convention, not a parameter.}{12}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Multiple comparisons.}{12}{section*.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Forecast calibration}{13}{subsection.7.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {8}Cross-Language Verification}{13}{section.8}\protected@file@percent }
 \newlabel{sec:golden}{{8}{13}{Cross-Language Verification}{section.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Golden-vector inventory. Each case fixes inputs and the expected output of the Python reference.}}{14}{table.caption.15}\protected@file@percent }
+\newlabel{tab:golden}{{5}{14}{Golden-vector inventory. Each case fixes inputs and the expected output of the Python reference}{table.caption.15}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {9}Serving Layer}{14}{section.9}\protected@file@percent }
 \newlabel{sec:serving}{{9}{14}{Serving Layer}{section.9}{}}
-\@writefile{toc}{\contentsline {paragraph}{Blocking work never touches the event loop.}{14}{section*.15}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{SQL NULL is not zero.}{14}{section*.16}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Optional filters need explicit casts.}{14}{section*.17}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {10}A Worked End-to-End Run}{14}{section.10}\protected@file@percent }
-\newlabel{sec:worked}{{10}{14}{A Worked End-to-End Run}{section.10}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Vertical slice, \texttt  {\small  kalshi:KXFEDDECISION-26SEP-C25}, 28 July 2026. Prices and order book are live Kalshi data; posts are fixture replay.}}{15}{table.caption.18}\protected@file@percent }
-\newlabel{tab:slice}{{6}{15}{Vertical slice, \code {kalshi:KXFEDDECISION-26SEP-C25}, 28 July 2026. Prices and order book are live Kalshi data; posts are fixture replay}{table.caption.18}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {11}Defects Found by Review}{15}{section.11}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {11.1}A fifth defect, recorded as fixed but still present}{15}{subsection.11.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Defects found by review, and why the test suite missed each.}}{16}{table.caption.19}\protected@file@percent }
-\newlabel{tab:defects}{{7}{16}{Defects found by review, and why the test suite missed each}{table.caption.19}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {12}Verification Status and Limitations}{16}{section.12}\protected@file@percent }
-\newlabel{sec:limits}{{12}{16}{Verification Status and Limitations}{section.12}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Test inventory. Uncompiled code is unverified code, and is labelled as such.}}{17}{table.caption.20}\protected@file@percent }
-\newlabel{tab:tests}{{8}{17}{Test inventory. Uncompiled code is unverified code, and is labelled as such}{table.caption.20}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {13}Conclusion}{17}{section.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Blocking work never touches the event loop.}{14}{section*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{SQL NULL is not zero.}{14}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Optional filters need explicit casts.}{14}{section*.18}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Vertical slice, \texttt  {\small  kalshi:KXFEDDECISION-26SEP-C25}, 28 July 2026. Prices and order book are live Kalshi data; posts are fixture replay.}}{15}{table.caption.19}\protected@file@percent }
+\newlabel{tab:slice}{{6}{15}{Vertical slice, \code {kalshi:KXFEDDECISION-26SEP-C25}, 28 July 2026. Prices and order book are live Kalshi data; posts are fixture replay}{table.caption.19}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {10}A Worked End-to-End Run}{15}{section.10}\protected@file@percent }
+\newlabel{sec:worked}{{10}{15}{A Worked End-to-End Run}{section.10}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces The same command, the same market, six days apart. Only the venue data differs. The fixture-replayed signal is deterministic and reproduces exactly, which isolates every change below to the market side.}}{16}{table.caption.20}\protected@file@percent }
+\newlabel{tab:obs}{{7}{16}{The same command, the same market, six days apart. Only the venue data differs. The fixture-replayed signal is deterministic and reproduces exactly, which isolates every change below to the market side}{table.caption.20}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.1}A second observation, six days later}{16}{subsection.10.1}\protected@file@percent }
+\newlabel{sec:obs2}{{10.1}{16}{A second observation, six days later}{subsection.10.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{The liquidity calibration is not stable.}{16}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{The degeneracy guard fired, and it was right to.}{16}{section*.22}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces The 3 August run, plotted from \texttt  {\small  paper/data/series.csv}. The signal moves across most of the unit interval and the LMSR integrates it; the real market does not move at all. The orange line is not a plotting artifact --- it is the entire basis on which the cross-correlation in Figure~\ref {fig:ccf} was computed.}}{17}{figure.caption.24}\protected@file@percent }
+\newlabel{fig:series}{{6}{17}{The 3 August run, plotted from \code {paper/data/series.csv}. The signal moves across most of the unit interval and the LMSR integrates it; the real market does not move at all. The orange line is not a plotting artifact --- it is the entire basis on which the cross-correlation in Figure~\ref {fig:ccf} was computed}{figure.caption.24}{}}
+\@writefile{toc}{\contentsline {paragraph}{But the cross-correlation did not refuse, and it should have.}{17}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {11}Defects Found by Review}{17}{section.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {11.1}A fifth defect, recorded as fixed but still present}{17}{subsection.11.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Cross-correlation of $S(t)$ against price, both runs, lags $-3$ to $+3$. Left: a real gradient peaking on the \emph  {price-leads} side, the direction that falsifies the hypothesis. Right: the same computation on a market that never moved, which the guard failed to reject. The right panel is not a weaker version of the left one --- it is a measurement of nothing, and it looks more like a finding than the real data does.}}{18}{figure.caption.25}\protected@file@percent }
+\newlabel{fig:ccf}{{7}{18}{Cross-correlation of $S(t)$ against price, both runs, lags $-3$ to $+3$. Left: a real gradient peaking on the \emph {price-leads} side, the direction that falsifies the hypothesis. Right: the same computation on a market that never moved, which the guard failed to reject. The right panel is not a weaker version of the left one --- it is a measurement of nothing, and it looks more like a finding than the real data does}{figure.caption.25}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Resting depth on each side of the book, both observations, on a log axis. On 28 July the two sides differed by $723\times $; on 3 August by $8.7\times $, with both sides three orders of magnitude thicker. Equation~\ref {eq:calib} turns each of these bars directly into a liquidity parameter, which is why $b$ is not reproducible across days.}}{18}{figure.caption.26}\protected@file@percent }
+\newlabel{fig:book}{{8}{18}{Resting depth on each side of the book, both observations, on a log axis. On 28 July the two sides differed by $723\times $; on 3 August by $8.7\times $, with both sides three orders of magnitude thicker. Equation~\ref {eq:calib} turns each of these bars directly into a liquidity parameter, which is why $b$ is not reproducible across days}{figure.caption.26}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Defects found by review, and why the test suite missed each.}}{19}{table.caption.27}\protected@file@percent }
+\newlabel{tab:defects}{{8}{19}{Defects found by review, and why the test suite missed each}{table.caption.27}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Test inventory. Uncompiled code is unverified code, and is labelled as such.}}{19}{table.caption.28}\protected@file@percent }
+\newlabel{tab:tests}{{9}{19}{Test inventory. Uncompiled code is unverified code, and is labelled as such}{table.caption.28}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12}Verification Status and Limitations}{19}{section.12}\protected@file@percent }
+\newlabel{sec:limits}{{12}{19}{Verification Status and Limitations}{section.12}{}}
 \bibcite{hanson}{1}
+\@writefile{toc}{\contentsline {section}{\numberline {13}Conclusion}{20}{section.13}\protected@file@percent }
 \bibcite{hanson2007}{2}
 \bibcite{granger}{3}
 \bibcite{bh}{4}
@@ -90,4 +105,4 @@
 \bibcite{deberta}{9}
 \bibcite{yin}{10}
 \bibcite{dickeyfuller}{11}
-\gdef \@abspage@last{18}
+\gdef \@abspage@last{21}
