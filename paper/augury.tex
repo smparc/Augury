@@ -15,6 +15,9 @@
 \usepackage{algpseudocode}
 \usepackage{listings}
 \usepackage{caption}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
 \usepackage[hidelinks]{hyperref}
 
 \usepackage{pgfplotstable}
@@ -58,6 +61,54 @@
 }
 \newcommand{\figcite}[1]{{\footnotesize\itshape Source: #1}}
 
+% ---------------------------------------------------------------------------
+% Document furniture: every section opens a page, running heads, tuned ToC.
+% ---------------------------------------------------------------------------
+% Every section opens a fresh page, and no float may occupy the top of that
+% page -- otherwise a deferred table lands above its own section heading.
+\newcommand{\sectionbreak}{\clearpage\suppressfloats[t]}
+
+\titleformat{\section}[hang]
+  {\normalfont\Large\bfseries}{\thesection}{0.7em}{}
+\titlespacing*{\section}{0pt}{0pt}{0.9\baselineskip}
+\titlespacing*{\subsection}{0pt}{1.1\baselineskip}{0.4\baselineskip}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{augGrey!45}\leaders\hrule height \headrulewidth\hfill}}
+\fancyhead[L]{\footnotesize\color{augGrey}Augury}
+\fancyhead[R]{\footnotesize\color{augGrey}\nouppercase{\leftmark}}
+\fancyfoot[C]{\footnotesize\thepage}
+\renewcommand{\sectionmark}[1]{\markboth{\thesection\quad #1}{}}
+
+\fancypagestyle{plain}{%
+  \fancyhf{}\renewcommand{\headrulewidth}{0pt}\fancyfoot[C]{\footnotesize\thepage}}
+
+% Float placement: let floats share pages with text far more readily, and
+% align float-only pages to the top instead of centring them vertically.
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.75}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.80}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
+\makeatletter
+\setlength{\@fptop}{0pt}
+\setlength{\@fpsep}{12pt plus 1fil}
+\setlength{\@fpbot}{0pt plus 1fil}
+\makeatother
+
+% ToC: no page-number dots on sections, tighter leading.
+\setlength{\cftbeforesecskip}{4pt}
+\renewcommand{\cftsecfont}{\bfseries}
+\renewcommand{\cftsecpagefont}{\bfseries}
+\renewcommand{\cftsecleader}{\hfill}
+\renewcommand{\cftsubsecleader}{\cftdotfill{\cftdotsep}}
+\setlength{\cftsecnumwidth}{2.2em}
+\setlength{\cftsubsecnumwidth}{3.0em}
+
 \lstset{
   basicstyle=\ttfamily\footnotesize,
   columns=fullflexible,
@@ -72,16 +123,50 @@
 \newcommand{\code}[1]{\texttt{\small #1}}
 \captionsetup{font=small}
 
-\title{Augury: A Polyglot Pipeline for Testing Whether\\
-Social Momentum Leads Prediction Markets\\[0.4em]
-\large Design, Numerical Guarantees, and Cross-Language Verification}
-\author{Matthew Park}
-\date{August 3, 2026}
-
 \begin{document}
-\maketitle
+\pagestyle{empty}
 
-\begin{abstract}
+% ---------------------------------------------------------------------------
+% Title page
+% ---------------------------------------------------------------------------
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+\vspace*{3.4cm}
+
+{\color{augGrey}\rule{\textwidth}{0.8pt}}
+\vspace{0.8cm}
+
+{\LARGE\bfseries Augury\par}
+\vspace{0.45cm}
+{\Large A Polyglot Pipeline for Testing Whether\\[0.25em]
+Social Momentum Leads Prediction Markets\par}
+\vspace{0.7cm}
+{\large\itshape Design, Numerical Guarantees,\\ and Cross-Language Verification\par}
+\vspace{0.8cm}
+{\color{augGrey}\rule{\textwidth}{0.8pt}}
+
+\vspace{2.2cm}
+{\large Matthew Park\par}
+\vspace{0.35cm}
+{\normalsize August 3, 2026\par}
+
+\vfill
+{\footnotesize\color{augGrey}
+Rust $\cdot$ Python $\cdot$ C\texttt{++}20 $\cdot$ Java $\cdot$ R \quad---\quad
+TimescaleDB $\cdot$ Redis $\cdot$ Dagster $\cdot$ Spring Boot\par}
+\vspace{1.2cm}
+\end{titlepage}
+
+% ---------------------------------------------------------------------------
+% Abstract page
+% ---------------------------------------------------------------------------
+\thispagestyle{empty}
+\vspace*{1.5cm}
+\begin{center}{\large\bfseries Abstract}\end{center}
+\vspace{0.6em}
+\begin{center}
+\begin{minipage}{0.90\textwidth}
 \noindent
 Prediction markets aggregate beliefs into a price. Social media aggregates the
 same beliefs into text. If the text moves first, a liquid market is leaving
@@ -110,7 +195,34 @@ spurious gradient computed against six units in the last place of rounding
 noise. No lead--lag result is claimed, because none is yet earned: the ingester
 has not run long enough. The contribution is the instrument and its calibration,
 not a finding.
-\end{abstract}
+\end{minipage}
+\end{center}
+\clearpage
+
+% ---------------------------------------------------------------------------
+% Front matter
+% ---------------------------------------------------------------------------
+\pagenumbering{roman}
+\setcounter{page}{1}
+\pagestyle{fancy}
+
+\phantomsection
+\addcontentsline{toc}{section}{Contents}
+\tableofcontents
+
+\clearpage
+\phantomsection
+\addcontentsline{toc}{section}{List of Figures}
+\listoffigures
+
+\vspace{1.2\baselineskip}
+\phantomsection
+\addcontentsline{toc}{section}{List of Tables}
+\listoftables
+
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
 
 \section{Introduction}
 
@@ -182,96 +294,7 @@ backtest sweep, so it is C++. Serving is a concurrency problem, so it is
 reactive Java. Econometrics belongs where the econometrics libraries are, so it
 is R.
 
-\begin{table}[t]
-\centering
-\caption{Services, responsibilities, and verification status. Line counts cover
-all git-tracked files of each type, test suites included.}
-\label{tab:services}
-\small
-\begin{tabular}{@{}llrll@{}}
-\toprule
-Service & Language & LOC & Responsibility & Status \\
-\midrule
-\code{augury-signal}    & Python 3.12 & 7{,}545 & NLP, $S(t)$, orchestration & runs, 139 pass \\
-\code{augury-ingest}    & Rust 1.97   & 2{,}469 & Streaming ingest, filter   & not compiled \\
-\code{augury-engine}    & C++20       & 1{,}470 & LMSR, walk-forward         & not compiled \\
-\code{augury-api}       & Java 25     & 1{,}222 & REST, WebSocket, ledger    & 9 tests (JDK 21) \\
-\code{augury-analytics} & R 4.6       &   981   & Granger, Brier, reports    & runs, 55 pass \\
-\midrule
-Schema / migrations     & SQL, JSON   & 1{,}200 & Shared contracts           & migrations applied \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Cross-service contracts}
-
-Services never call each other directly. Two boundaries carry everything:
-
-\textbf{TimescaleDB} is the durable record. A market is keyed everywhere as
-\code{<venue>:<ticker>} (for example \code{kalshi:KXFEDDECISION-26SEP-C25}),
-which is what keeps cross-venue joins unambiguous --- Kalshi tickers and
-Polymarket condition ids share no namespace. Hypertable partitioning forces a
-schema property worth noting: any unique constraint must include the
-partitioning column, which is why \code{posts} is keyed on
-$(\text{post\_id}, \text{market\_id}, \text{created\_at})$ rather than
-\code{post\_id} alone. That is not merely a concession to Timescale; one post
-can legitimately be evidence about two markets, and the compound key says so.
-
-\textbf{Redis pub/sub} carries live updates on \code{augury.signal.*},
-\code{augury.price.*}, and \code{augury.sim.*}. Payloads are validated against
-JSON Schema \emph{at the publisher}. This is the only place the contract can be
-enforced: the C++ and Java consumers are separately compiled and cannot be
-type-checked against the Python publisher, so a schema check at the boundary is
-the sole mechanism preventing silent drift. Redis is deliberately not a
-dependency --- an outage degrades the live stream while ingestion, scoring, and
-the REST API keep working off the database.
-
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}[
-  font=\scriptsize, node distance=4mm,
-  tbl/.style={draw, thick, rounded corners=1.5pt, align=left, inner sep=3pt,
-              text width=37mm},
-  hyp/.style={tbl, draw=augBlue, fill=augBlue!5},
-  rel/.style={tbl, draw=augGrey, fill=augGrey!8},
-  led/.style={tbl, draw=augGreen, fill=augGreen!5},
-  fk/.style={-{Latex[length=1.6mm]}, draw=augGrey!80},
-]
-\node[rel] (markets) {\textbf{markets}\\ \underline{market\_id}\\ venue, ticker, target\\ status, resolved\_outcome};
-\node[hyp, right=13mm of markets] (posts) {\textbf{posts} \hfill \textit{1 d}\\ \underline{post\_id, market\_id,}\\ \underline{created\_at}\\ followers, engagements\\ minhash[], lsh\_bucket\\ filter\_verdict, source};
-\node[hyp, below=5mm of posts] (stances) {\textbf{stances} \hfill \textit{1 d}\\ \underline{post\_id, market\_id,}\\ \underline{model\_version, created\_at}\\ stance, confidence, disagreement};
-\node[hyp, below=5mm of markets] (prices) {\textbf{market\_prices} \hfill \textit{7 d}\\ \underline{market\_id, ts, source}\\ yes\_bid/ask, spread\\ depth\_bid, depth\_ask};
-\node[hyp, below=5mm of prices] (signals) {\textbf{signals} \hfill \textit{7 d}\\ \underline{market\_id, ts,}\\ \underline{model\_version}\\ s\_t, p\_hat, calibration\\ half\_life\_seconds};
-\node[hyp, below=5mm of stances] (sim) {\textbf{sim\_prices} \hfill \textit{7 d}\\ \underline{market\_id, ts, run\_id}\\ sim\_price, b, q\_yes, q\_no};
-\node[led, below=5mm of signals] (scores) {\textbf{scores} / \textbf{granger\_results}\\ brier\_signal, brier\_market, bss\\ p\_value\_adj, significant};
-\node[led, below=5mm of sim] (ledger) {\textbf{positions} / \textbf{ledger\_fills}\\ qty\_yes, qty\_no, cash\\ realized\_pnl, settled};
-
-\draw[fk] (markets) -- (posts);
-\draw[fk] (markets) -- (prices);
-\draw[fk] (posts) -- (stances);
-\draw[fk] (prices) -- (signals);
-\draw[fk] (stances) -- (sim);
-\draw[fk] (signals) -- (scores);
-\draw[fk] (sim) -- (ledger);
-
-\node[anchor=north west, align=left, augGrey, font=\scriptsize]
-  at ([yshift=-3mm]scores.south west)
-  {\textcolor{augBlue}{$\blacksquare$} TimescaleDB hypertable (\textit{italic} = chunk interval)
-   \quad \textcolor{augGrey}{$\blacksquare$} plain table
-   \quad \textcolor{augGreen}{$\blacksquare$} results / ledger};
-\end{tikzpicture}
-\caption{The shared schema. Underlined fields are the primary key. Every
-hypertable's key includes its partitioning column --- a Timescale requirement,
-but also a modelling one: \code{posts} is keyed on
-$(\text{post\_id}, \text{market\_id}, \text{created\_at})$ because one post can
-legitimately be evidence about two markets. \code{stances} is deliberately
-separate from \code{posts} and keyed on \code{model\_version}, so re-scoring the
-corpus with a new model cannot overwrite what an earlier model produced --- the
-Brier comparison between versions depends on both surviving.}
-\label{fig:schema}
-\end{figure}
-
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
   node distance=6mm,
@@ -316,14 +339,103 @@ Brier comparison between versions depends on both surviving.}
 \draw[ar] (cpp) -- (r);
 \draw[dar] (java) -- node[below, font=\tiny] {predictions + ledger} (r);
 \end{tikzpicture}
-\caption{Data flow. Sources at the top, the durable record in the middle,
+\caption[Service data flow across the five languages]{Data flow. Sources at the top, the durable record in the middle,
 modelling and simulation below it, serving and econometrics at the bottom.
 Every arrow crosses either the database or a schema-validated Redis channel;
 no service holds a reference to another.}
 \label{fig:arch}
 \end{figure}
 
-\begin{figure}[t]
+\begin{table}[htbp]
+\centering
+\caption[Services, responsibilities, and verification status]{Services, responsibilities, and verification status. Line counts cover
+all git-tracked files of each type, test suites included.}
+\label{tab:services}
+\small
+\begin{tabular}{@{}llrll@{}}
+\toprule
+Service & Language & LOC & Responsibility & Status \\
+\midrule
+\code{augury-signal}    & Python 3.12 & 7{,}545 & NLP, $S(t)$, orchestration & runs, 139 pass \\
+\code{augury-ingest}    & Rust 1.97   & 2{,}469 & Streaming ingest, filter   & not compiled \\
+\code{augury-engine}    & C++20       & 1{,}470 & LMSR, walk-forward         & not compiled \\
+\code{augury-api}       & Java 25     & 1{,}222 & REST, WebSocket, ledger    & 9 tests (JDK 21) \\
+\code{augury-analytics} & R 4.6       &   981   & Granger, Brier, reports    & runs, 55 pass \\
+\midrule
+Schema / migrations     & SQL, JSON   & 1{,}200 & Shared contracts           & migrations applied \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Cross-service contracts}
+
+Services never call each other directly. Two boundaries carry everything:
+
+\textbf{TimescaleDB} is the durable record. A market is keyed everywhere as
+\code{<venue>:<ticker>} (for example \code{kalshi:KXFEDDECISION-26SEP-C25}),
+which is what keeps cross-venue joins unambiguous --- Kalshi tickers and
+Polymarket condition ids share no namespace. Hypertable partitioning forces a
+schema property worth noting: any unique constraint must include the
+partitioning column, which is why \code{posts} is keyed on
+$(\text{post\_id}, \text{market\_id}, \text{created\_at})$ rather than
+\code{post\_id} alone. That is not merely a concession to Timescale; one post
+can legitimately be evidence about two markets, and the compound key says so.
+
+\textbf{Redis pub/sub} carries live updates on \code{augury.signal.*},
+\code{augury.price.*}, and \code{augury.sim.*}. Payloads are validated against
+JSON Schema \emph{at the publisher}. This is the only place the contract can be
+enforced: the C++ and Java consumers are separately compiled and cannot be
+type-checked against the Python publisher, so a schema check at the boundary is
+the sole mechanism preventing silent drift. Redis is deliberately not a
+dependency --- an outage degrades the live stream while ingestion, scoring, and
+the REST API keep working off the database.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize, node distance=4mm,
+  tbl/.style={draw, thick, rounded corners=1.5pt, align=left, inner sep=3pt,
+              text width=37mm},
+  hyp/.style={tbl, draw=augBlue, fill=augBlue!5},
+  rel/.style={tbl, draw=augGrey, fill=augGrey!8},
+  led/.style={tbl, draw=augGreen, fill=augGreen!5},
+  fk/.style={-{Latex[length=1.6mm]}, draw=augGrey!80},
+]
+\node[rel] (markets) {\textbf{markets}\\ \underline{market\_id}\\ venue, ticker, target\\ status, resolved\_outcome};
+\node[hyp, right=13mm of markets] (posts) {\textbf{posts} \hfill \textit{1 d}\\ \underline{post\_id, market\_id,}\\ \underline{created\_at}\\ followers, engagements\\ minhash[], lsh\_bucket\\ filter\_verdict, source};
+\node[hyp, below=5mm of posts] (stances) {\textbf{stances} \hfill \textit{1 d}\\ \underline{post\_id, market\_id,}\\ \underline{model\_version, created\_at}\\ stance, confidence, disagreement};
+\node[hyp, below=5mm of markets] (prices) {\textbf{market\_prices} \hfill \textit{7 d}\\ \underline{market\_id, ts, source}\\ yes\_bid/ask, spread\\ depth\_bid, depth\_ask};
+\node[hyp, below=5mm of prices] (signals) {\textbf{signals} \hfill \textit{7 d}\\ \underline{market\_id, ts,}\\ \underline{model\_version}\\ s\_t, p\_hat, calibration\\ half\_life\_seconds};
+\node[hyp, below=5mm of stances] (sim) {\textbf{sim\_prices} \hfill \textit{7 d}\\ \underline{market\_id, ts, run\_id}\\ sim\_price, b, q\_yes, q\_no};
+\node[led, below=5mm of signals] (scores) {\textbf{scores} / \textbf{granger\_results}\\ brier\_signal, brier\_market, bss\\ p\_value\_adj, significant};
+\node[led, below=5mm of sim] (ledger) {\textbf{positions} / \textbf{ledger\_fills}\\ qty\_yes, qty\_no, cash\\ realized\_pnl, settled};
+
+\draw[fk] (markets) -- (posts);
+\draw[fk] (markets) -- (prices);
+\draw[fk] (posts) -- (stances);
+\draw[fk] (prices) -- (signals);
+\draw[fk] (stances) -- (sim);
+\draw[fk] (signals) -- (scores);
+\draw[fk] (sim) -- (ledger);
+
+\node[anchor=north west, align=left, augGrey, font=\scriptsize]
+  at ([yshift=-3mm]scores.south west)
+  {\textcolor{augBlue}{$\blacksquare$} TimescaleDB hypertable (\textit{italic} = chunk interval)
+   \quad \textcolor{augGrey}{$\blacksquare$} plain table
+   \quad \textcolor{augGreen}{$\blacksquare$} results / ledger};
+\end{tikzpicture}
+\caption[The shared TimescaleDB schema]{The shared schema. Underlined fields are the primary key. Every
+hypertable's key includes its partitioning column --- a Timescale requirement,
+but also a modelling one: \code{posts} is keyed on
+$(\text{post\_id}, \text{market\_id}, \text{created\_at})$ because one post can
+legitimately be evidence about two markets. \code{stances} is deliberately
+separate from \code{posts} and keyed on \code{model\_version}, so re-scoring the
+corpus with a new model cannot overwrite what an earlier model produced --- the
+Brier comparison between versions depends on both surviving.}
+\label{fig:schema}
+\end{figure}
+
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
   font=\footnotesize, node distance=5mm,
@@ -357,7 +469,7 @@ no service holds a reference to another.}
   at ([yshift=-2mm]calfit.south west)
   {\code{augury\_refresh} every 15 min \ $\cdot$ \ \code{augury\_resolution} hourly};
 \end{tikzpicture}
-\caption{The Dagster asset graph, as declared in
+\caption[The Dagster asset graph]{The Dagster asset graph, as declared in
 \code{pipeline/orchestrator.py}. The five blue assets are partitioned one
 partition per tracked market, so a single venue outage fails one partition
 rather than the run, and re-materialisation redoes only the market that failed.
@@ -415,9 +527,9 @@ $-1075 \ln 2 \approx -745.13$, verified by bisection. Concretely,
 $e^{-233} = 7.14\times10^{-102}$, which is an entirely ordinary normalised
 double. Table~\ref{tab:underflow} gives the real boundary.
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
-\caption{Decay kernel magnitude by post age and half-life. Underflow to exactly
+\caption[Decay kernel magnitude by post age and half-life]{Decay kernel magnitude by post age and half-life. Underflow to exactly
 zero begins at $\lambda \Delta t > 745.13$, or roughly 22.4 days at a 30-minute
 half-life.}
 \label{tab:underflow}
@@ -435,7 +547,7 @@ Half-life & Post age & $\lambda \Delta t$ & $e^{-\lambda \Delta t}$ \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}
 \begin{semilogyaxis}[
@@ -460,7 +572,7 @@ Half-life & Post age & $\lambda \Delta t$ & $e^{-\lambda \Delta t}$ \\
   at (axis cs:23.2,1e-120) {underflow cliff\\ $\lambda\Delta t = 745.13$\\ (22.4 d)};
 \end{semilogyaxis}
 \end{tikzpicture}
-\caption{The decay kernel over 32 days. At a 6-hour half-life nothing comes close
+\caption[The decay kernel and the float64 underflow cliff]{The decay kernel over 32 days. At a 6-hour half-life nothing comes close
 to the boundary. At the 30-minute half-life the adaptive path can reach, the
 kernel falls off the representable range entirely at 22.4 days --- the orange
 curve simply stops, because beyond that point every term in both sums of
@@ -529,7 +641,7 @@ of zero would make the surge ratio undefined --- silently disabling the trigger
 in the case where it is most informative, a quiet market that suddenly receives
 thirty posts.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -557,7 +669,7 @@ thirty posts.
 \node[annot, text=augRed, anchor=south west] at (axis cs:16,0.20,10) {$\kappa r_{\text{base}} = 15$};
 \end{axis}
 \end{tikzpicture}
-\caption{Effective half-life as a function of the two adaptive triggers,
+\caption[Effective half-life under the two adaptive triggers]{Effective half-life as a function of the two adaptive triggers,
 evaluated by calling \code{effective\_half\_life} over a grid. Inside both
 thresholds (lower-left block) the factor is exactly $1$ and the baseline 6-hour
 half-life is preserved bit-for-bit. Either trigger alone shortens it; the
@@ -700,9 +812,9 @@ threshold $\tau = 0.80$ the probability that a genuine duplicate pair is even
 \emph{compared} is $20.4\%$ (Table~\ref{tab:lsh}, Figure~\ref{fig:scurve}).
 Roughly four in five true duplicates at threshold are never examined.
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
-\caption{Probability that a pair with Jaccard similarity $s$ is retrieved for
+\caption[LSH retrieval probability by Jaccard similarity]{Probability that a pair with Jaccard similarity $s$ is retrieved for
 comparison. The shipped configuration's steep region sits to the \emph{right}
 of the $\tau = 0.80$ decision threshold, which is the wrong side.}
 \label{tab:lsh}
@@ -717,7 +829,7 @@ proposed $(b{=}16, r{=}8)$  & 0.237 & 0.613 & 0.815 & \textbf{0.947} & 0.994 & 1
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -742,7 +854,7 @@ proposed $(b{=}16, r{=}8)$  & 0.237 & 0.613 & 0.815 & \textbf{0.947} & 0.994 & 1
 \addplot[only marks, mark=*, mark size=1.6pt, red!65!black] coordinates {(0.8,0.9470)};
 \end{axis}
 \end{tikzpicture}
-\caption{LSH retrieval probability. The decision threshold is $\tau = 0.80$;
+\caption[LSH retrieval probability against the duplicate threshold]{LSH retrieval probability. The decision threshold is $\tau = 0.80$;
 the shipped banding retrieves only $20.4\%$ of true duplicates there.}
 \label{fig:scurve}
 \end{figure}
@@ -759,7 +871,7 @@ $\tau = 0.80$ to $94.7\%$, at the price of examining $23.7\%$ of pairs at
 $s = 0.60$ --- all of which the exact check then rejects. No additional storage
 or hashing is required; it is a repartitioning of an existing signature.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[
   font=\footnotesize, node distance=4mm,
@@ -798,7 +910,7 @@ or hashing is required; it is a repartitioning of an existing signature.
 \node[anchor=west, align=left, font=\scriptsize, augGrey] at ([xshift=3mm]box.east)
   {\rotatebox{-90}{\parbox{34mm}{\centering all written to \code{posts} with\\ \code{filter\_reason}, signature intact}}};
 \end{tikzpicture}
-\caption{The filter's decision order. Cheap field checks precede the MinHash
+\caption[The bot and near-duplicate filter decision order]{The filter's decision order. Cheap field checks precede the MinHash
 comparison so obvious junk never reaches the expensive path --- but the
 signature is computed \emph{first}, unconditionally, so a rejected post can
 still be compared against later arrivals. No branch discards a post: every
@@ -856,7 +968,7 @@ The \code{WHERE} clause on the \code{SELECT} closes that hole; the
 are refunded after the response arrives, without which the effective ceiling
 would collapse from the number of \emph{reads} to the number of \emph{requests}.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[font=\footnotesize, >={Latex[length=1.8mm]},
   msg/.style={font=\scriptsize, inner sep=1.5pt},
@@ -880,7 +992,7 @@ would collapse from the number of \emph{reads} to the number of \emph{requests}.
 \draw[<-, augGreen, dashed] (0,-6.35) -- node[msg, above] {\code{RETURNING 2400}} (4.3,-6.35);
 \draw[<-, augRed, dashed] (8.6,-6.90) -- node[msg, above] {\code{0 rows} $\Rightarrow$ \code{BudgetExceeded}} (4.3,-6.90);
 \end{tikzpicture}
-\caption{Why the reservation must be one statement. The \code{WHERE} clause
+\caption[Why the read-budget reservation must be one statement]{Why the reservation must be one statement. The \code{WHERE} clause
 lives inside the upsert, so the check and the increment are a single atomic
 operation and the loser of the race is told it lost. A read followed by a write
 lets both workers observe the same headroom and both spend it --- at
@@ -952,9 +1064,9 @@ symmetric. Table~\ref{tab:depth} applies Eq.~\ref{eq:calib} to a live Kalshi
 snapshot of \code{KXFEDDECISION-26SEP-C25} taken during the run in
 Section~\ref{sec:worked}.
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
-\caption{Depth calibration on a live Kalshi book: bid $0.03 \times 93$, ask
+\caption[Depth calibration on a live Kalshi book]{Depth calibration on a live Kalshi book: bid $0.03 \times 93$, ask
 $0.04 \times 67{,}296$. The logit width is $0.2980$. The choice of side changes
 $b$ by a factor of $723$.}
 \label{tab:depth}
@@ -970,7 +1082,7 @@ ask only  & $67{,}296.1$ & $225{,}792$  & \$156{,}507 \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -999,7 +1111,7 @@ ask only  & $67{,}296.1$ & $225{,}792$  & \$156{,}507 \\
   {$b=225{,}792$: $748{,}902$ shares for the same move};
 \end{axis}
 \end{tikzpicture}
-\caption{What the $723\times$ ambiguity actually costs. Each curve is the same
+\caption[LMSR price impact under the three calibrations of $b$]{What the $723\times$ ambiguity actually costs. Each curve is the same
 LMSR anchored at the observed mid of $0.035$, differing only in which side of the
 book $b$ was calibrated from. On the bid-side calibration a retail-sized order
 moves the synthetic market across its whole range; on the ask-side calibration
@@ -1063,7 +1175,7 @@ result reachable:
       concern.
 \end{itemize}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}[x=0.075cm, y=1cm, font=\footnotesize]
 \foreach \i in {0,1,2,3} {
@@ -1082,7 +1194,7 @@ result reachable:
 \node[anchor=west, font=\scriptsize, text=augGrey] at (28,-2.05)
   {step $=$ test size, so test blocks never overlap};
 \end{tikzpicture}
-\caption{Walk-forward evaluation in the C++ engine. Each window fits $b$ from its
+\caption[Walk-forward evaluation windows]{Walk-forward evaluation in the C++ engine. Each window fits $b$ from its
 own training-period order books and grid-searches responsiveness $\rho$ there,
 then evaluates untouched on the test block. The step equals the test size, so no
 observation is scored twice --- overlapping test windows would reuse data across
@@ -1191,7 +1303,7 @@ model. The fit refuses to run at all when every resolved market in the batch had
 the same outcome, on the grounds that such a batch says nothing about where the
 decision boundary sits.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -1213,7 +1325,7 @@ decision boundary sits.
 \node[annot, text=augOrange, anchor=west] at (axis cs:0.1,0.075) {market price $0.035$};
 \end{axis}
 \end{tikzpicture}
-\caption{Mapping the signal into probability space. The affine map is a straight
+\caption[Affine versus Platt signal-to-probability mappings]{Mapping the signal into probability space. The affine map is a straight
 line through $(0, 0.5)$ --- it asserts that a neutral signal means even odds,
 which on a market trading at $0.035$ is badly wrong, and is the whole of the
 $18.5$-point gap in Section~\ref{sec:worked}. A Platt fit is the mechanism for
@@ -1255,9 +1367,9 @@ epoch so the file is byte-identical between runs. It holds 53 cases
 suites compare at $10^{-9}$, loose enough to absorb differences in summation
 order and tight enough that a genuine formula divergence cannot hide.
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
-\caption{Golden-vector inventory. Each case fixes inputs and the expected output
+\caption[Golden-vector inventory]{Golden-vector inventory. Each case fixes inputs and the expected output
 of the Python reference.}
 \label{tab:golden}
 \small
@@ -1347,9 +1459,9 @@ apart. The second run was not planned; it was executed to produce the figures in
 this section, and what it found is more informative than what it was for.
 Table~\ref{tab:slice} reports the first.
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
-\caption{Vertical slice, \code{kalshi:KXFEDDECISION-26SEP-C25}, 28 July 2026.
+\caption[Vertical slice results, 28 July 2026]{Vertical slice, \code{kalshi:KXFEDDECISION-26SEP-C25}, 28 July 2026.
 Prices and order book are live Kalshi data; posts are fixture replay.}
 \label{tab:slice}
 \small
@@ -1413,9 +1525,9 @@ picture (Table~\ref{tab:obs}). The market had drifted from $0.035$ to $0.015$ an
 then stopped moving; the book had thickened by three orders of magnitude on both
 sides. Nothing in the code changed. Everything downstream did.
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
-\caption{The same command, the same market, six days apart. Only the venue data
+\caption[The same market, six days apart]{The same command, the same market, six days apart. Only the venue data
 differs. The fixture-replayed signal is deterministic and reproduces exactly,
 which isolates every change below to the market side.}
 \label{tab:obs}
@@ -1501,7 +1613,7 @@ disagree. It is worth noting how narrowly this was caught: had the market moved
 one tick more, the Granger guard would have passed too, and the run would have
 reported a $p$-value computed on noise.
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -1520,7 +1632,7 @@ reported a $p$-value computed on noise.
   {real market: flat at $0.015$ for all 48 bars};
 \end{axis}
 \end{tikzpicture}
-\caption{The 3 August run, plotted from \code{paper/data/series.csv}. The signal
+\caption[Signal, simulated price, and real market, 3 August run]{The 3 August run, plotted from \code{paper/data/series.csv}. The signal
 moves across most of the unit interval and the LMSR integrates it; the real
 market does not move at all. The orange line is not a plotting artifact --- it is
 the entire basis on which the cross-correlation in Figure~\ref{fig:ccf} was
@@ -1528,7 +1640,7 @@ computed.}
 \label{fig:series}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}
 \begin{axis}[
@@ -1561,7 +1673,7 @@ computed.}
 \node[annot, anchor=south, font=\scriptsize] at (axis cs:-2,-0.33) {undefined};
 \end{axis}
 \end{tikzpicture}
-\caption{Cross-correlation of $S(t)$ against price, both runs, lags $-3$ to $+3$.
+\caption[Cross-correlation, both observations]{Cross-correlation of $S(t)$ against price, both runs, lags $-3$ to $+3$.
 Left: a real gradient peaking on the \emph{price-leads} side, the direction that
 falsifies the hypothesis. Right: the same computation on a market that never
 moved, which the guard failed to reject. The right panel is not a weaker version
@@ -1570,7 +1682,7 @@ finding than the real data does.}
 \label{fig:ccf}
 \end{figure}
 
-\begin{figure}[t]
+\begin{figure}[htbp]
 \centering
 \begin{tikzpicture}
 \begin{semilogxaxis}[
@@ -1587,7 +1699,7 @@ finding than the real data does.}
 \addplot[fill=augBlue!60, draw=augBlue] coordinates {(67296,3) [67,296] (93,4) [93]};
 \end{semilogxaxis}
 \end{tikzpicture}
-\caption{Resting depth on each side of the book, both observations, on a log
+\caption[Resting order-book depth, both observations]{Resting depth on each side of the book, both observations, on a log
 axis. On 28 July the two sides differed by $723\times$; on 3 August by
 $8.7\times$, with both sides three orders of magnitude thicker. Equation~\ref{eq:calib}
 turns each of these bars directly into a liquidity parameter, which is why $b$ is
@@ -1601,9 +1713,9 @@ records what it found. Each entry is a class of bug the existing tests could not
 have caught, which is the property that makes them worth recording rather than
 silently fixing.
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
-\caption{Defects found by review, and why the test suite missed each.}
+\caption[Defects found by review]{Defects found by review, and why the test suite missed each.}
 \label{tab:defects}
 \small
 \begin{tabular}{@{}p{0.20\textwidth}p{0.36\textwidth}p{0.34\textwidth}@{}}
@@ -1676,9 +1788,9 @@ not, which is why it is reported here rather than quietly patched.
 \section{Verification Status and Limitations}
 \label{sec:limits}
 
-\begin{table}[t]
+\begin{table}[htbp]
 \centering
-\caption{Test inventory. Uncompiled code is unverified code, and is labelled as
+\caption[Test inventory]{Test inventory. Uncompiled code is unverified code, and is labelled as
 such.}
 \label{tab:tests}
 \small
@@ -1849,6 +1961,9 @@ reports a monotone gradient to $-0.398$ labelled \emph{signal leads} --- on the
 same data, from the same window, with no such warning. That contrast is the
 defect of Section~\ref{sec:obs2} as the tool actually prints it.
 
+\clearpage
+\phantomsection
+\addcontentsline{toc}{section}{References}
 \begin{thebibliography}{9}
 
 \bibitem{hanson}
