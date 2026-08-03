@@ -17,8 +17,41 @@
 \usepackage{caption}
 \usepackage[hidelinks]{hyperref}
 
+\usepackage{pgfplotstable}
+\usepackage{colortbl}
+
 \pgfplotsset{compat=1.18}
-\usetikzlibrary{arrows.meta, positioning, fit, backgrounds, calc}
+\usetikzlibrary{arrows.meta, positioning, fit, backgrounds, calc, shapes.geometric,
+                patterns, decorations.pathreplacing}
+\usepgfplotslibrary{colormaps}
+
+% ---------------------------------------------------------------------------
+% Shared figure system: one palette, one grid, one tick style everywhere.
+% ---------------------------------------------------------------------------
+\definecolor{augBlue}{HTML}{2C6FB8}
+\definecolor{augOrange}{HTML}{D9622B}
+\definecolor{augGreen}{HTML}{2E8B57}
+\definecolor{augPurple}{HTML}{6A4C93}
+\definecolor{augGrey}{HTML}{6E7681}
+\definecolor{augRed}{HTML}{B03030}
+
+\pgfplotsset{
+  augbase/.style={
+    width=0.78\textwidth, height=5.2cm,
+    grid=major, grid style={augGrey!18},
+    tick label style={font=\footnotesize},
+    label style={font=\small},
+    title style={font=\small\bfseries},
+    legend style={font=\footnotesize, draw=augGrey!40, fill=white, fill opacity=0.9,
+                  text opacity=1, row sep=1pt},
+    every axis plot/.append style={line width=0.9pt},
+    axis line style={augGrey!60},
+    tick style={augGrey!60},
+  },
+  augsmall/.style={augbase, width=0.46\textwidth, height=4.4cm},
+}
+
+\newcommand{\figcite}[1]{{\footnotesize\itshape Source: #1}}
 
 \lstset{
   basicstyle=\ttfamily\footnotesize,
