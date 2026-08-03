@@ -220,6 +220,51 @@ the REST API keep working off the database.
 \begin{figure}[t]
 \centering
 \begin{tikzpicture}[
+  font=\scriptsize, node distance=4mm,
+  tbl/.style={draw, thick, rounded corners=1.5pt, align=left, inner sep=3pt,
+              text width=37mm},
+  hyp/.style={tbl, draw=augBlue, fill=augBlue!5},
+  rel/.style={tbl, draw=augGrey, fill=augGrey!8},
+  led/.style={tbl, draw=augGreen, fill=augGreen!5},
+  fk/.style={-{Latex[length=1.6mm]}, draw=augGrey!80},
+]
+\node[rel] (markets) {\textbf{markets}\\ \underline{market\_id}\\ venue, ticker, target\\ status, resolved\_outcome};
+\node[hyp, right=13mm of markets] (posts) {\textbf{posts} \hfill \textit{1 d}\\ \underline{post\_id, market\_id, created\_at}\\ followers, engagements\\ minhash[], lsh\_bucket\\ filter\_verdict, source};
+\node[hyp, below=5mm of posts] (stances) {\textbf{stances} \hfill \textit{1 d}\\ \underline{post\_id, market\_id,}\\ \underline{model\_version, created\_at}\\ stance, confidence, disagreement};
+\node[hyp, below=5mm of markets] (prices) {\textbf{market\_prices} \hfill \textit{7 d}\\ \underline{market\_id, ts, source}\\ yes\_bid/ask, spread\\ depth\_bid, depth\_ask};
+\node[hyp, below=5mm of prices] (signals) {\textbf{signals} \hfill \textit{7 d}\\ \underline{market\_id, ts, model\_version}\\ s\_t, p\_hat, calibration\\ half\_life\_seconds};
+\node[hyp, below=5mm of stances] (sim) {\textbf{sim\_prices} \hfill \textit{7 d}\\ \underline{market\_id, ts, run\_id}\\ sim\_price, b, q\_yes, q\_no};
+\node[led, below=5mm of signals] (scores) {\textbf{scores} / \textbf{granger\_results}\\ brier\_signal, brier\_market, bss\\ p\_value\_adj, significant};
+\node[led, below=5mm of sim] (ledger) {\textbf{positions} / \textbf{ledger\_fills}\\ qty\_yes, qty\_no, cash\\ realized\_pnl, settled};
+
+\draw[fk] (markets) -- (posts);
+\draw[fk] (markets) -- (prices);
+\draw[fk] (posts) -- (stances);
+\draw[fk] (prices) -- (signals);
+\draw[fk] (stances) -- (sim);
+\draw[fk] (signals) -- (scores);
+\draw[fk] (sim) -- (ledger);
+
+\node[anchor=north west, align=left, augGrey, font=\scriptsize]
+  at ([yshift=-3mm]scores.south west)
+  {\textcolor{augBlue}{$\blacksquare$} TimescaleDB hypertable (\textit{italic} = chunk interval)
+   \quad \textcolor{augGrey}{$\blacksquare$} plain table
+   \quad \textcolor{augGreen}{$\blacksquare$} results / ledger};
+\end{tikzpicture}
+\caption{The shared schema. Underlined fields are the primary key. Every
+hypertable's key includes its partitioning column --- a Timescale requirement,
+but also a modelling one: \code{posts} is keyed on
+$(\text{post\_id}, \text{market\_id}, \text{created\_at})$ because one post can
+legitimately be evidence about two markets. \code{stances} is deliberately
+separate from \code{posts} and keyed on \code{model\_version}, so re-scoring the
+corpus with a new model cannot overwrite what an earlier model produced --- the
+Brier comparison between versions depends on both surviving.}
+\label{fig:schema}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
   node distance=6mm,
   font=\footnotesize,
   box/.style={draw, rounded corners=2pt, minimum height=7.5mm, align=center,
@@ -267,6 +312,50 @@ modelling and simulation below it, serving and econometrics at the bottom.
 Every arrow crosses either the database or a schema-validated Redis channel;
 no service holds a reference to another.}
 \label{fig:arch}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize, node distance=5mm,
+  ast/.style={draw, rounded corners=2pt, minimum height=6.5mm, minimum width=21mm,
+              align=center, thick, inner xsep=3pt},
+  part/.style={ast, draw=augBlue, fill=augBlue!7},
+  glob/.style={ast, draw=augPurple, fill=augPurple!7},
+  ar/.style={-{Latex[length=1.8mm]}, draw=augGrey},
+]
+\node[glob] (cfg) {\code{market\_config}};
+\node[part, below left=8mm and 6mm of cfg] (prices) {\code{market\_prices}};
+\node[part, below right=8mm and 6mm of cfg] (posts) {\code{posts}};
+\node[part, below=8mm of posts] (stances) {\code{stances}};
+\node[part, below=8mm of $(prices)!0.5!(stances)$, xshift=0mm] (signals) {\code{signals}};
+\node[part, below left=8mm and 2mm of signals] (sim) {\code{sim\_prices}};
+\node[glob, below right=8mm and 2mm of signals] (res) {\code{resolutions}};
+\node[glob, below=8mm of res] (calfit) {\code{calibration\_fit}};
+
+\draw[ar] (cfg) -- (prices);
+\draw[ar] (cfg) -- (posts);
+\draw[ar] (posts) -- (stances);
+\draw[ar] (stances) -- (signals);
+\draw[ar] (prices) -- (signals);
+\draw[ar] (signals) -- (sim);
+\draw[ar] (signals) -- (res);
+\draw[ar] (res) -- (calfit);
+
+\node[anchor=west, font=\scriptsize, augGrey] at ([xshift=6mm]cfg.east)
+  {\textcolor{augPurple}{$\blacksquare$} global \quad \textcolor{augBlue}{$\blacksquare$} partitioned by market};
+\node[anchor=north west, font=\scriptsize, augGrey, align=left]
+  at ([yshift=-2mm]calfit.south west)
+  {\code{augury\_refresh} every 15 min \ $\cdot$ \ \code{augury\_resolution} hourly};
+\end{tikzpicture}
+\caption{The Dagster asset graph, as declared in
+\code{pipeline/orchestrator.py}. The five blue assets are partitioned one
+partition per tracked market, so a single venue outage fails one partition
+rather than the run, and re-materialisation redoes only the market that failed.
+Every asset writes through an idempotent upsert, which is what makes re-running
+an overlapping window safe --- Dagster will happily retry a partition, and doing
+so must not double-count posts in $S(t)$.}
+\label{fig:dag}
 \end{figure}
 
 \section{The Social Signal $S(t)$}
@@ -662,6 +751,55 @@ $\tau = 0.80$ to $94.7\%$, at the price of examining $23.7\%$ of pairs at
 $s = 0.60$ --- all of which the exact check then rejects. No additional storage
 or hashing is required; it is a repartitioning of an existing signature.
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize, node distance=4mm,
+  fstep/.style={draw, thick, rounded corners=2pt, minimum height=6mm, align=center,
+               inner xsep=4pt, draw=augBlue, fill=augBlue!6},
+  dec/.style={draw, thick, diamond, aspect=2.6, inner sep=1pt, align=center,
+              draw=augGrey, fill=augGrey!8, font=\scriptsize},
+  rej/.style={draw, thick, rounded corners=2pt, align=center, inner xsep=4pt,
+              minimum height=5.5mm, draw=augRed, fill=augRed!6, font=\scriptsize},
+  acc/.style={fstep, draw=augGreen, fill=augGreen!8},
+  ar/.style={-{Latex[length=1.8mm]}, draw=augGrey},
+]
+\node[fstep] (in) {incoming post};
+\node[fstep, below=5mm of in] (sig) {compute MinHash signature\\ \scriptsize(always --- even for rejects)};
+\node[dec, below=5mm of sig] (len) {length\\ $<12$?};
+\node[dec, below=6mm of len] (sym) {symbol\\ ratio $>0.6$?};
+\node[dec, below=6mm of sym] (spam) {promo\\ marker?};
+\node[dec, below=6mm of spam] (bot) {age $<14$\,d\\ \emph{and} $<50$ f?};
+\node[dec, below=6mm of bot] (dup) {LSH hit\\ $J \ge 0.80$?};
+\node[acc, below=6mm of dup] (ok) {\code{accepted}};
+
+\node[rej, right=16mm of len] (r1) {\code{low\_quality}};
+\node[rej, right=16mm of sym] (r2) {\code{low\_quality}};
+\node[rej, right=16mm of spam] (r3) {\code{low\_quality}};
+\node[rej, right=16mm of bot] (r4) {\code{bot}};
+\node[rej, right=16mm of dup] (r5) {\code{duplicate}};
+
+\draw[ar] (in) -- (sig);
+\draw[ar] (sig) -- (len);
+\foreach \a/\b in {len/sym, sym/spam, spam/bot, bot/dup, dup/ok}
+  \draw[ar] (\a) -- node[left, font=\scriptsize, augGrey] {no} (\b);
+\foreach \d/\r in {len/r1, sym/r2, spam/r3, bot/r4, dup/r5}
+  \draw[ar, augRed] (\d) -- node[above, font=\scriptsize, augRed] {yes} (\r);
+
+\node[draw, dashed, augGrey, rounded corners=2pt, fit=(r1)(r5), inner sep=5pt] (box) {};
+\node[anchor=west, align=left, font=\scriptsize, augGrey] at ([xshift=3mm]box.east)
+  {\rotatebox{-90}{\parbox{34mm}{\centering all written to \code{posts} with\\ \code{filter\_reason}, signature intact}}};
+\end{tikzpicture}
+\caption{The filter's decision order. Cheap field checks precede the MinHash
+comparison so obvious junk never reaches the expensive path --- but the
+signature is computed \emph{first}, unconditionally, so a rejected post can
+still be compared against later arrivals. No branch discards a post: every
+verdict is persisted with its reason, which is the only thing that makes the
+filter's own precision measurable after the fact. Thresholds shown are the
+shipped defaults.}
+\label{fig:filter}
+\end{figure}
+
 \subsection{Rejects are stored, not dropped}
 
 Rejected posts are written to the database with their verdict
@@ -709,6 +847,39 @@ The \code{WHERE} clause on the \code{SELECT} closes that hole; the
 \code{ON CONFLICT} guard covers every subsequent request. Unused reservations
 are refunded after the response arrives, without which the effective ceiling
 would collapse from the number of \emph{reads} to the number of \emph{requests}.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[font=\footnotesize, >={Latex[length=1.8mm]}]
+% lifelines
+\foreach \x/\name in {0/{Worker A}, 3.6/{\code{read\_budget}}, 7.2/{Worker B}} {
+  \node[draw, thick, fill=augGrey!8, minimum width=20mm, minimum height=5mm] (h\x) at (\x,0) {\name};
+  \draw[augGrey!60, dashed] (\x,-0.35) -- (\x,-5.0);
+}
+\def\naive{-0.9}
+% Naive read-then-write
+\node[anchor=west, font=\footnotesize\bfseries, augRed] at (-1.9,\naive+0.35) {Read-then-write (racy)};
+\draw[->, augRed] (0,\naive) -- node[above, font=\scriptsize] {SELECT} (3.6,\naive);
+\draw[->, augRed] (7.2,\naive-0.45) -- node[above, font=\scriptsize] {SELECT} (3.6,\naive-0.45);
+\node[annot, text=augRed, anchor=west] at (3.75,\naive-0.9) {both read \code{1900/2000} --- both see headroom};
+\draw[->, augRed] (0,\naive-1.35) -- node[above, font=\scriptsize] {+500} (3.6,\naive-1.35);
+\draw[->, augRed] (7.2,\naive-1.8) -- node[above, font=\scriptsize] {+500} (3.6,\naive-1.8);
+\node[annot, text=augRed, anchor=west] at (3.75,\naive-2.2) {\textbf{2900 / 2000} --- ceiling breached};
+
+\def\safe{-3.75}
+\node[anchor=west, font=\footnotesize\bfseries, augGreen] at (-1.9,\safe+0.35) {Single conditional upsert};
+\draw[->, augGreen] (0,\safe) -- node[above, font=\scriptsize] {\code{INSERT..ON CONFLICT}} (3.6,\safe);
+\draw[->, augGreen] (7.2,\safe-0.45) -- node[above, font=\scriptsize] {\code{INSERT..ON CONFLICT}} (3.6,\safe-0.45);
+\draw[<-, augGreen, dashed] (0,\safe-0.9) -- node[above, font=\scriptsize] {\code{RETURNING 2400}} (3.6,\safe-0.9);
+\draw[<-, augRed, dashed] (7.2,\safe-1.25) -- node[above, font=\scriptsize] {\code{0 rows} $\Rightarrow$ \code{BudgetExceeded}} (3.6,\safe-1.25);
+\end{tikzpicture}
+\caption{Why the reservation must be one statement. The \code{WHERE} clause
+lives inside the upsert, so the check and the increment are a single atomic
+operation and the loser of the race is told it lost. A read followed by a write
+lets both workers observe the same headroom and both spend it --- at
+\$0.005 a read, silently.}
+\label{fig:budget}
+\end{figure}
 
 Finally, anything derived from replayed fixtures carries \code{source='fixture'}
 into the database, so a number computed from replayed data can never later be
@@ -1193,14 +1364,15 @@ $b$ (ask side)            & $225{,}792$ & $1{,}000{,}000$\rlap{$^{\dagger}$} \\
 \midrule
 Latest $S(t)$             & $-0.559$ & $-0.559$ \\
 LMSR path end             & $0.220$ & $0.220$ \\
-Distinct prices in window & 22 & \textbf{2} \\
+Distinct prices in window & $\ge 3$ & \textbf{2} \\
 Granger $S \to P$         & $F=1.003$, $p=0.463$ & \textbf{refused (degenerate)} \\
 \bottomrule
 \end{tabular}
 
 \vspace{2pt}
 {\footnotesize $^{\dagger}$ clamped at \code{B\_MAX}; the uncapped value is
-$1{,}220{,}700$.}
+$1{,}220{,}743$. The 28 July distinct-price count is recorded only as
+$\ge 3$, which is what the guard passing establishes.}
 \end{table}
 
 Three things follow, and they are the most useful empirical results in this
