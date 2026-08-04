@@ -1391,8 +1391,10 @@ Group & Covers & Cases & Notable case \\
 \end{tabular}
 \end{table}
 
-Python and R currently agree to $10^{-9}$ across the whole file. The C++ suite
-asserts the same vectors and will close the loop once the service compiles
+The loop is closed. Each language asserts the subset it implements, to $10^{-9}$:
+Python all 53 vectors, C++ the 20 LMSR vectors (43 Catch2 assertions across 5
+cases), and R the 14 logit and affine vectors. The C++ engine now compiles and
+runs, so that column is a measurement rather than a promise
 (Section~\ref{sec:limits}). Regenerating after an intentional change to the
 reference mathematics is expected to break the other suites, and that breakage
 is the mechanism working rather than a nuisance to be routed around.
@@ -1739,7 +1741,8 @@ skip without \code{DATABASE\_URL}. \\[2pt]
 C++ engine &
 Five missing standard headers (\code{<cstdint>}, \code{<limits>},
 \code{<string>}, \code{<utility>}, \code{<stdexcept>}). &
-Invisible without a compiler; the service has never been built
+Found by inspection before a compiler was available. With the headers in place the
+engine now compiles clean and its 26 Catch2 cases pass
 (Section~\ref{sec:limits}). \\
 \bottomrule
 \end{tabular}
@@ -1825,7 +1828,7 @@ clears it without administrative rights, and the same toolchain builds the C++
 engine. No source change was required in either service.
 
 That the C++ engine compiled unmodified is itself weak evidence: the five missing
-standard headers recorded in Section~\ref{sec:audit} were found by inspection
+standard headers recorded in the correctness review were found by inspection
 before any compiler existed to find them, and no further compilation defects
 surfaced. The Rust build emitted nine dead-code warnings and no errors.
 
