@@ -6,18 +6,23 @@ rediscovered.
 
 ## Current build status
 
+All five services build and pass their suites. Nothing here is blocked any more.
+
 | Service | Language | Status | Verified by |
 |---|---|---|---|
 | `augury-signal` | Python 3.12 | **Builds and runs** | 139 pytest tests, ruff clean, live end-to-end slice |
-| `augury-api` | Java 25 | **Blocked — JDK version** | 9 JUnit tests passed under JDK 21, before `pom.xml` was raised to 25 |
-| `augury-analytics` | R 4.6 | **Builds and tests** | 55 testthat tests |
-| `augury-ingest` | Rust 1.97 | **Blocked — see Smart App Control** | not compiled |
-| `augury-engine` | C++20 | **Blocked — no compiler installed** | not compiled |
+| `augury-api` | Java 25 | **Builds and tests** | 9 JUnit tests on JDK 25; also on JDK 21 with `-Djava.version=21` |
+| `augury-analytics` | R 4.6 | **Builds and tests** | 55 testthat assertions |
+| `augury-ingest` | Rust 1.97 | **Builds and tests** | 42 cargo tests, GNU target; 9 warnings, no errors |
+| `augury-engine` | C++20 | **Builds and tests** | 97 Catch2 assertions in 26 cases |
 
-Python, Java, and R all agree on the shared golden vectors in
-`schemas/testdata/golden_vectors.json`, which is the cross-language correctness
-gate. The C++ suite asserts the same vectors and will exercise that gate once it
-can be compiled.
+The cross-language golden-vector gate in `schemas/testdata/golden_vectors.json` is
+now fully exercised: C++ asserts the 20 LMSR vectors (43 assertions across 5
+Catch2 cases) and R the 14 logit/affine vectors, both matching the Python
+reference to 1e-9.
+
+No source change was required to build any of the three previously-unbuilt
+services. Every blocker below was environmental.
 
 ## Toolchain locations
 
@@ -34,41 +39,60 @@ R packages    %LOCALAPPDATA%\R\win-library\4.6      (set R_LIBS_USER)
 Rust 1.97     %USERPROFILE%\.cargo\bin
 ```
 
-## Blocker 1 — Smart App Control blocks Rust builds
+## Blocker 1 — the linker, not Smart App Control
 
-`cargo build` fails with:
+This section previously concluded that Smart App Control made Rust unbuildable on
+this machine and that it "cannot be worked around from inside the build". **That
+conclusion was wrong**, and the record is corrected here.
 
-```
-error: failed to run custom build command for `generic-array v0.14.7`
-Caused by: An Application Control policy has blocked this file. (os error 4551)
-```
-
-Smart App Control is **Enforced** on this machine:
+Smart App Control is still **Enforced**:
 
 ```powershell
 Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy' `
   -Name VerifiedAndReputablePolicyState
-# 1 = Enforced, 2 = Evaluation, 0 = Off
+# 1 = Enforced, 2 = Evaluation, 0 = Off   -> reads 1
 ```
 
-Cargo compiles each dependency's `build.rs` into a fresh, unsigned executable
-and runs it. Smart App Control blocks unsigned binaries without established
-reputation, so every crate with a build script fails. This affects any toolchain
-that compiles-then-executes locally, which includes the C++ tests and benchmarks.
+With it enforced and unchanged, `augury-ingest` compiles and all 42 tests run,
+and `augury-engine` compiles and all 26 Catch2 cases run. Cargo built and
+executed the `build.rs` binaries for `ring`, `serde`, `rustls` and the rest
+without an Application Control refusal. The earlier `os error 4551` was real when
+it was recorded, but it is not what stops a build here now.
 
-**This cannot be worked around from inside the build.** Turning Smart App Control
-off is a deliberate, effectively irreversible decision — Windows cannot re-enable
-it without resetting the machine — so it is the owner's call, not a build step.
+The blocker that actually bites is the **absence of a C++ toolchain**, and it is
+one blocker, not two: Rust's default `x86_64-pc-windows-msvc` target shells out to
+MSVC's `link.exe`, so with no Visual C++ installed, cargo fails at link time —
+not at the build script:
 
-Options, roughly in order of preference:
+```
+error: linker `link.exe` not found
+note: the msvc targets depend on the msvc linker but `link.exe` was not found
+```
 
-1. **Build Rust and C++ in CI or a container**, leaving this machine for the
-   Python/Java/R work that already runs. Nothing about the architecture requires
-   all five services to build in one place.
-2. **Build inside WSL2**, which is a separate Linux userland and unaffected.
-   Needed for Docker anyway.
-3. **Turn Smart App Control off** (Windows Security → App & browser control →
-   Smart App Control → Off). Irreversible without a Windows reset.
+Two ways to clear it:
+
+1. **Install the MSVC Build Tools** (see Blocker 2). Fixes C++ and Rust together,
+   and is the right choice if you want the default MSVC target.
+2. **Use the GNU target** — no admin rights, no system install. Point `PATH` at a
+   MinGW-w64 toolchain and build against `x86_64-pc-windows-gnu`:
+
+   ```powershell
+   cargo +stable-x86_64-pc-windows-gnu build
+   cargo +stable-x86_64-pc-windows-gnu test
+   ```
+
+   One wrinkle if the toolchain is LLVM-based (e.g. `llvm-mingw`): Rust's GNU
+   target links against `-lgcc` and `-lgcc_eh`, which LLVM builds do not ship.
+   Supplying them as aliases for the LLVM equivalents is enough —
+   `libclang_rt.builtins-x86_64.a` as `libgcc.a`, and `libunwind.a` as
+   `libgcc_eh.a`, dropped into `x86_64-w64-mingw32/lib`. A true GCC-based
+   MinGW-w64 distribution needs no such step.
+
+The C++ engine builds with the same MinGW-w64 toolchain via
+`cmake -G "MinGW Makefiles"`. Its `FetchContent` dependencies (nlohmann/json
+v3.11.3, Catch2 v3.5.2) are cloned at configure time, so that step needs network
+access. Note that the test binary needs the toolchain's runtime DLLs
+(`libunwind.dll`, `libc++.dll`) on `PATH` to run.
 
 ## Blocker 2 — no C++ compiler
 

@@ -35,17 +35,22 @@ The work is split across five services in Rust, Python, C++, Java, and R, each h
 
 ## Project Status
 
-All seven phases are implemented. Three of the five services have been executed and tested on the development machine; two are written but have never been compiled, because the toolchain to do so is not available there. That distinction is worth stating plainly — uncompiled code is unverified code.
+All seven phases are implemented, and **all five services now compile and pass their test suites**. The Rust and C++ services — previously written but never built, because the toolchain was unavailable — have since been compiled and run. Every row below is a measurement, not an expectation.
 
 | Service | Language | Status | Evidence |
 |---|---|---|---|
 | `augury-signal` | Python 3.12 | **Runs, tested** | 139 pytest tests, ruff clean, live end-to-end slice against Kalshi |
-| `augury-api` | Java 25 | **Needs JDK 25** | 9 JUnit tests passed under JDK 21; `pom.xml` now targets 25 |
-| `augury-analytics` | R 4.6 | **Runs, tested** | 55 testthat tests |
-| `augury-ingest` | Rust 1.97 | **Not compiled** | blocked by Smart App Control — see [docs/BUILD.md](docs/BUILD.md) |
-| `augury-engine` | C++20 | **Not compiled** | no C++ compiler installed — see [docs/BUILD.md](docs/BUILD.md) |
+| `augury-api` | Java 25 | **Compiles, tested** | 9 JUnit tests pass on JDK 25; also on JDK 21 via `-Djava.version=21` |
+| `augury-analytics` | R 4.6 | **Runs, tested** | 55 testthat assertions across 19 `test_that` blocks |
+| `augury-ingest` | Rust 1.97 | **Compiles, tested** | 42 cargo tests pass; 9 dead-code warnings, no errors |
+| `augury-engine` | C++20 | **Compiles, tested** | 97 Catch2 assertions across 26 cases |
 
-**Cross-language correctness.** The LMSR, decay, and calibration math is implemented independently in Python, C++, and R. All three are checked against one shared set of fixed inputs and expected outputs in [`schemas/testdata/golden_vectors.json`](schemas/testdata/golden_vectors.json), generated from the Python reference by `python -m augury_signal.golden`. Python and R currently agree to 1e-9; the C++ suite asserts the same vectors and will close the loop once it compiles. Independent implementations of a formula agree only by luck unless something forces the issue, and that file is the forcing function.
+The Rust build needs a linker. On a machine without the MSVC toolchain, build against the
+GNU target (`cargo +stable-x86_64-pc-windows-gnu build`) with a MinGW-w64 toolchain on
+`PATH` — see [docs/BUILD.md](docs/BUILD.md). No source change was required for any of the
+three previously-unbuilt services; the blockers were entirely environmental.
+
+**Cross-language correctness.** The calibration math is implemented independently in Python, C++, and R; the LMSR in Python and C++; the decay kernel in Python alone. Each implementation is checked against one shared set of fixed inputs and expected outputs in [`schemas/testdata/golden_vectors.json`](schemas/testdata/golden_vectors.json), generated from the Python reference by `python -m augury_signal.golden`. **The loop is now closed**: R reproduces the 14 calibration vectors it covers and C++ reproduces the 20 LMSR vectors — 43 assertions across 5 Catch2 cases — both to 1e-9. Independent implementations of a formula agree only by luck unless something forces the issue, and that file is the forcing function.
 
 **You can run the pipeline today without Docker.** `augury slice` executes the whole chain — poll, ingest, score, aggregate, simulate, analyze — in memory and prints a report. See [Getting Started](#getting-started).
 
@@ -276,9 +281,15 @@ augury/
 > build fails at compile with `release version 25 not supported` — the Java version is a
 > hard floor, not a preference. Lower it to `21` if you would rather not install a newer JDK;
 > nothing in the service uses a language feature past 21 (records, text blocks, pattern
-> matching for `instanceof`).
+> matching for `instanceof`). Both paths are verified: the suite passes 9/9 on JDK 25 as
+> shipped, and 9/9 on JDK 21 with `mvn -Djava.version=21 test`.
 
-Windows users: see [docs/BUILD.md](docs/BUILD.md) first. Three environment-level blockers (Smart App Control, missing C++ toolchain, WSL2 for Docker) are documented there with the commands to clear them.
+Windows users: see [docs/BUILD.md](docs/BUILD.md) first. The blocker that actually stops a
+build is the **absence of a C++/linker toolchain** — it stops the C++ engine outright, and
+it stops Rust too, since the default `x86_64-pc-windows-msvc` target shells out to
+`link.exe`. Installing the MSVC Build Tools clears both; alternatively, build Rust against
+`x86_64-pc-windows-gnu` with a MinGW-w64 toolchain, which needs no admin rights. Docker
+additionally needs WSL2.
 
 ### 1. Configure
 
@@ -346,17 +357,20 @@ Every `make` target accepts a toolchain override (`make test-java MVN=/path/to/m
 ```bash
 make test-py      # 139 pytest tests
 make test-java    #   9 JUnit tests
-make test-r       #  55 testthat tests
-make test-rust    # not yet compiled — see docs/BUILD.md
-make test-cpp     # not yet compiled — see docs/BUILD.md
+make test-r       #  55 testthat assertions
+make test-rust    #  42 cargo tests
+make test-cpp     #  97 Catch2 assertions in 26 cases
 make test-all
 ```
+
+`make test-r` needs the `DBI`, `RPostgres` and `ggplot2` packages installed; without them
+`testthat::test_local` fails at package load before reaching a single assertion.
 
 Two properties the suites are built around:
 
 **Nothing touches the network or spends money by default.** Live-API tests are marked and deselected (`pytest -m live` to opt in); the X client resolves to fixture replay unless live mode is explicitly enabled.
 
-**The golden vectors are the cross-language gate.** `schemas/testdata/golden_vectors.json` holds 53 fixed cases — 32 covering S(t), the LMSR cost/price/trade functions, depth calibration, and adaptive decay, plus 21 pinning the affine, logit, and sigmoid helpers those build on. Python, C++, and R each assert their own implementation reproduces them to 1e-9. The cases are chosen to be hostile rather than representative: a post old enough to underflow the decay kernel, a crossed book that must fall back rather than raise, and logit inputs at 0.001 and 0.999 that exercise the boundary clamp. Regenerate with `python -m augury_signal.golden` after any intentional change to the reference math — and expect the other suites to fail until they are brought back into line. That failure is the mechanism working.
+**The golden vectors are the cross-language gate.** `schemas/testdata/golden_vectors.json` holds 53 fixed cases — 32 covering S(t), the LMSR cost/price/trade functions, depth calibration, and adaptive decay, plus 21 pinning the affine, logit, and sigmoid helpers those build on. Each language asserts the subset it implements, to 1e-9: Python all 53, C++ the 20 LMSR vectors (43 Catch2 assertions), R the 14 logit and affine vectors. The cases are chosen to be hostile rather than representative: a post old enough to underflow the decay kernel, a crossed book that must fall back rather than raise, and logit inputs at 0.001 and 0.999 that exercise the boundary clamp. Regenerate with `python -m augury_signal.golden` after any intentional change to the reference math — and expect the other suites to fail until they are brought back into line. That failure is the mechanism working.
 
 ---
 
@@ -364,10 +378,10 @@ Two properties the suites are built around:
 
 - [x] **Phase 0** — Architectural specification and repo setup.
 - [x] **Phase 1** — Python prototype (end-to-end exploratory notebook on Kalshi + X).
-- [x] **Phase 2** — Rust async streaming ingestion service with TimescaleDB sink. *(written, not compiled)*
+- [x] **Phase 2** — Rust async streaming ingestion service with TimescaleDB sink. *(compiles; 42 tests pass)*
 - [x] **Phase 3** — DeBERTa-v3 target-specific stance pipeline with Dagster orchestration.
 - [x] **Phase 4** — R econometric reporting module (Granger causality, cross-correlations, FDR).
-- [x] **Phase 5** — C++ Hanson LMSR synthetic market maker and walk-forward backtesting engine. *(written, not compiled)*
+- [x] **Phase 5** — C++ Hanson LMSR synthetic market maker and walk-forward backtesting engine. *(compiles; 26 Catch2 cases pass)*
 - [x] **Phase 6** — Java Spring Boot backend API with WebSocket live-streaming updates.
 - [x] **Phase 7** — Market resolution watcher — detects when a tracked market closes, freezes final Brier/BSS scores, and settles open paper-trading positions.
 
@@ -391,7 +405,7 @@ Remaining, stated explicitly rather than left to be discovered:
 - **`simulate_lmsr` does not do what its docstring says.** The docstring claims `b` is re-calibrated at each step from the most recent book snapshot. In fact `b` is computed once before the loop and the in-loop `market.recalibrate(b)` passes that same unchanged value — which is provably a no-op, since the scaling ratio is 1 and `q_no` is identically zero along this path. A dead local survives too, now silenced with `del` rather than removed. There is a structural reason the docstring cannot be satisfied as written: `poll_prices` appends exactly **one** book snapshot per cycle (history comes from candles, which carry bid/ask but no depth), so no per-step depth series exists to calibrate against. The C++ backtester already has the correct version — per-window calibration from the training window's own books. Fixing this means either persisting a depth series or restating the docstring.
 - **The degeneracy guards disagree, and the looser one reports noise.** `_analyze` skips the cross-correlation when `len(set(price_values)) < 2` and skips the Granger test when `len(set(price_values)) < 3`. On a market pinned deep out-of-the-money these disagree. Observed on `KXFEDDECISION-26SEP-C25` on 2026-08-03: the window held exactly two distinct floats, `0.015` and `0.01500000000000001`, differing by 6 ULPs — one price plus a rounding artifact, since the YES ask is derived as `1 - 0.98`, which is not representable in binary64. Granger correctly refused ("the test is degenerate"); the cross-correlation ran anyway and reported a smooth gradient to **−0.398 at lag +6h, labelled "signal leads"** — computed entirely against float noise, and exactly the artifact this project exists not to produce. Fix: test `ptp(prices) < 1e-9` rather than set cardinality, and use the same threshold in both places.
 - **The LSH banding is mistuned relative to its own threshold.** With `DEFAULT_NUM_HASHES = 128` split into `DEFAULT_NUM_BANDS = 8` bands of 16 rows, the band-collision probability $1 - (1 - s^{16})^{8}$ crosses 50% at $s \approx 0.856$ — not 0.80, as the source comment claims. At the actual duplicate threshold of 0.80 only **20.4%** of true near-duplicate pairs are ever retrieved for comparison. Because LSH here is only a pre-filter, and every candidate is then checked exactly against the threshold, a banding false positive costs one integer comparison while a false negative is a duplicate that silently counts as an independent opinion in $S(t)$. The steep region therefore belongs to the *left* of the threshold: repartitioning the same 128 permutations as 16 bands of 8 rows moves the 50% point to $s \approx 0.674$ and lifts retrieval at 0.80 to 94.7%. Not yet applied, because changing it invalidates stored `lsh_bucket` keys and needs a migration.
-- **Rust and C++ have never been compiled.** They may contain errors that only a compiler will find. See [docs/BUILD.md](docs/BUILD.md) for the two blockers and how to clear them.
+- ~~**Rust and C++ have never been compiled.**~~ **Resolved.** Both now build and pass their suites (42 cargo tests; 97 Catch2 assertions in 26 cases). The five missing C++ standard headers listed above were the only real defects the compiler surfaced, and they were already fixed; Rust compiled with 9 dead-code warnings and no errors. Neither service needed a source change to build — see [docs/BUILD.md](docs/BUILD.md).
 - **The DeBERTa path needs a real checkpoint.** Plain `microsoft/deberta-v3-base` is a pretrained encoder with a randomly initialized head — it has no concept of entailment, and using it directly would produce confident noise. The default points at an NLI-tuned checkpoint, which makes zero-shot stance detection work without a labeled corpus. A fine-tune on prediction-market stance data would very likely beat it.
 - **Test coverage is uneven.** The pure-math core is thoroughly tested; the database layer, Redis bus, and pipeline orchestration are not, and the Java tests cover ledger arithmetic rather than the controllers. There is no cross-service integration suite.
 - **No results yet.** Granger causality on a handful of hourly bars proves nothing. The ingester needs to run for days-to-weeks per market before any lead-lag finding is worth reporting, and the Platt calibration cannot be fit until several markets have actually resolved.

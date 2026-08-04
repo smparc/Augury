@@ -357,9 +357,9 @@ all git-tracked files of each type, test suites included.}
 Service & Language & LOC & Responsibility & Status \\
 \midrule
 \code{augury-signal}    & Python 3.12 & 7{,}545 & NLP, $S(t)$, orchestration & runs, 139 pass \\
-\code{augury-ingest}    & Rust 1.97   & 2{,}469 & Streaming ingest, filter   & not compiled \\
-\code{augury-engine}    & C++20       & 1{,}470 & LMSR, walk-forward         & not compiled \\
-\code{augury-api}       & Java 25     & 1{,}222 & REST, WebSocket, ledger    & 9 tests (JDK 21) \\
+\code{augury-ingest}    & Rust 1.97   & 2{,}469 & Streaming ingest, filter   & builds, 42 pass \\
+\code{augury-engine}    & C++20       & 1{,}470 & LMSR, walk-forward         & builds, 26 pass \\
+\code{augury-api}       & Java 25     & 1{,}222 & REST, WebSocket, ledger    & builds, 9 pass \\
 \code{augury-analytics} & R 4.6       &   981   & Granger, Brier, reports    & runs, 55 pass \\
 \midrule
 Schema / migrations     & SQL, JSON   & 1{,}200 & Shared contracts           & migrations applied \\
@@ -1790,8 +1790,8 @@ not, which is why it is reported here rather than quietly patched.
 
 \begin{table}[htbp]
 \centering
-\caption[Test inventory]{Test inventory. Uncompiled code is unverified code, and is labelled as
-such.}
+\caption[Test inventory]{Test inventory. Every suite has now been executed; no row is a
+projection.}
 \label{tab:tests}
 \small
 \begin{tabular}{@{}llll@{}}
@@ -1800,21 +1800,34 @@ Suite & Framework & Count & Status \\
 \midrule
 \code{augury-signal} & pytest   & 139 tests & \textbf{pass} (1.3 s, ruff clean) \\
 \code{augury-analytics} & testthat & 55 expectations & \textbf{pass} \\
-\code{augury-api}    & JUnit    & 9 tests   & passed under JDK 21; POM now targets 25 \\
-\code{augury-ingest} & cargo    & 42 tests  & \textbf{never compiled} \\
-\code{augury-engine} & Catch2   & 26 cases  & \textbf{never compiled} \\
+\code{augury-api}    & JUnit    & 9 tests   & \textbf{pass} (JDK 25; also JDK 21) \\
+\code{augury-ingest} & cargo    & 42 tests  & \textbf{pass} (GNU target) \\
+\code{augury-engine} & Catch2   & 26 cases  & \textbf{pass} (97 assertions) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:tests} is the honest accounting. Three of five services have been
-executed on the development machine; two have not, because the toolchain to do so
-is unavailable there --- Rust builds are blocked by Windows Smart App Control,
-which blocks the unsigned \code{build.rs} executables Cargo compiles and runs,
-and no C++ compiler is installed. Both blockers are environmental and documented
-with the commands to clear them, but neither has been cleared, and uncompiled
-code is unverified code. The 42 Rust and 26 C++ test cases in
-Table~\ref{tab:tests} are written, not passing.
+Table~\ref{tab:tests} is the honest accounting, and it has changed. An earlier
+version of this section reported that two of the five services had never been
+compiled, and treated that as a standing limitation: uncompiled code is
+unverified code. Both have since been built and run, and the table now records
+measurements rather than intentions.
+
+The correction worth recording is the diagnosis, not just the outcome. Rust
+failures had been attributed to Windows Smart App Control blocking the unsigned
+\code{build.rs} executables Cargo compiles and runs. Smart App Control remains
+\emph{Enforced} on the same machine, and both services nonetheless build and pass.
+The operative blocker was narrower and shared: no C++ toolchain was installed, and
+Rust's default \code{x86\_64-pc-windows-msvc} target links through MSVC's
+\code{link.exe}, so cargo failed at link time rather than at the build script.
+Building Rust against \code{x86\_64-pc-windows-gnu} with a MinGW-w64 toolchain
+clears it without administrative rights, and the same toolchain builds the C++
+engine. No source change was required in either service.
+
+That the C++ engine compiled unmodified is itself weak evidence: the five missing
+standard headers recorded in Section~\ref{sec:audit} were found by inspection
+before any compiler existed to find them, and no further compilation defects
+surfaced. The Rust build emitted nine dead-code warnings and no errors.
 
 Beyond that:
 
