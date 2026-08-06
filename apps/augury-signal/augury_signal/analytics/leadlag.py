@@ -45,6 +45,27 @@ from ..signal.calibration import logit
 DEFAULT_FREQ = "1h"
 MAX_FORWARD_FILL_BARS = 1
 
+# Range below which a series is treated as constant. Prediction-market prices
+# are quoted in cents, so a genuine move is at least 0.01; anything smaller is
+# arithmetic residue from deriving one side of the book as `1 - x`. Well above
+# float64 epsilon, well below one tick.
+DEGENERATE_RANGE = 1e-9
+
+
+def _has_variation(series: pd.Series, tol: float = DEGENERATE_RANGE) -> bool:
+    """True when a series carries more spread than floating-point residue.
+
+    Distinct-value counting is not a substitute. `1 - 0.98` is not exactly
+    `0.02` in binary64, so a market pinned at one price for a whole window can
+    still present two "distinct" values six ULPs apart — enough for `nunique()`
+    to wave it through, and enough for a correlation against it to return a
+    confident number computed entirely from noise.
+    """
+    values = series.to_numpy(dtype=float)
+    if values.size == 0:
+        return False
+    return bool(np.nanmax(values) - np.nanmin(values) > tol)
+
 
 @dataclass(frozen=True, slots=True)
 class StationarityResult:
@@ -103,8 +124,10 @@ def stationarity(series: Sequence[float] | pd.Series, *, regression: str = "c") 
     clean = pd.Series(series, dtype=float).dropna()
     if len(clean) < 10:
         raise ValueError(f"need at least 10 observations for an ADF test, got {len(clean)}")
-    if clean.nunique() == 1:
-        raise ValueError("series is constant; ADF is undefined")
+    if not _has_variation(clean):
+        raise ValueError(
+            "series carries no variation beyond floating-point residue; ADF is undefined"
+        )
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -287,7 +310,12 @@ def cross_correlation(
         # A constant series has zero standard deviation, making the correlation
         # 0/0. pandas returns NaN, which is the honest answer; computing it
         # anyway just emits a divide warning on the way to the same result.
-        if len(pair) > 2 and pair.iloc[:, 0].nunique() > 1 and pair.iloc[:, 1].nunique() > 1:
+        #
+        # Range, not `nunique()`. A series holding 0.015 and 0.015000000000000001
+        # — one price plus a rounding artifact from deriving the ask as 1 - 0.98 —
+        # has two distinct values and zero information, and correlating against it
+        # produces a large, smooth, entirely spurious coefficient.
+        if len(pair) > 2 and _has_variation(pair.iloc[:, 0]) and _has_variation(pair.iloc[:, 1]):
             corr = float(pair.iloc[:, 0].corr(pair.iloc[:, 1]))
         else:
             corr = float("nan")

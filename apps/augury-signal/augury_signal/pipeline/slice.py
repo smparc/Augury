@@ -34,6 +34,13 @@ from .steps import (
 # this the slice reports "insufficient history" instead of a number.
 MIN_GRANGER_OBS = 20
 
+# Price range below which the series is treated as constant. Prediction-market
+# prices are quoted in cents, so any *real* move is at least 0.01; anything
+# smaller is arithmetic residue from deriving one side of the book as `1 - x`.
+# The threshold is far above float64 epsilon and far below one tick, so it
+# cannot mistake a genuine move for noise or vice versa.
+DEGENERATE_PRICE_RANGE = 1e-9
+
 
 @dataclass(slots=True)
 class SliceResult:
@@ -277,10 +284,21 @@ def _analyze(result: SliceResult) -> None:
     # A correlation against a constant series is 0/0. Reporting the resulting
     # zeros as "no relationship" would be wrong — the truth is that this market
     # did not move at all in the window, so the data cannot answer the question.
-    if len(set(price_values)) < 2:
+    #
+    # Tested on the price *range*, not on set cardinality. Distinct-value counting
+    # was the bug: observed on KXFEDDECISION-26SEP-C25, a window held exactly two
+    # distinct floats — 0.015 and 0.015000000000000001, six ULPs apart, because
+    # the YES ask is derived as 1 - 0.98 and neither is representable in binary64.
+    # Cardinality said "two values, go ahead"; the cross-correlation then ran
+    # against float noise and reported a smooth gradient to -0.398 at lag +6h
+    # labelled "signal leads". That is precisely the artifact this project exists
+    # not to produce.
+    price_range = max(price_values) - min(price_values)
+    if price_range < DEGENERATE_PRICE_RANGE:
         result.granger_note = (
-            f"market price never moved across all {len(price_values)} aligned bars "
-            "(deep out-of-the-money) — correlation and causality are both undefined here"
+            f"market price moved by {price_range:.3g} across all {len(price_values)} aligned "
+            f"bars (below the {DEGENERATE_PRICE_RANGE:g} floating-point noise floor) — "
+            "correlation and causality are both undefined here"
         )
         return
 
@@ -292,12 +310,6 @@ def _analyze(result: SliceResult) -> None:
         result.granger_note = (
             f"{len(signal_values)} aligned observations; a Granger test needs at least "
             f"{MIN_GRANGER_OBS} to be interpretable"
-        )
-        return
-
-    if len(set(price_values)) < 3:
-        result.granger_note = (
-            "market price is nearly constant over this window — the test is degenerate"
         )
         return
 
