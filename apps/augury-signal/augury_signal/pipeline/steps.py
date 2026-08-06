@@ -43,6 +43,11 @@ from ..signal.stance import EnsembleStanceModel, StanceModel
 
 log = logging.getLogger(__name__)
 
+# How far back a signal evaluation looks. At the 6-hour default half-life a
+# 7-day-old post carries exp(-19.4) ~ 4e-9 of a fresh one's weight, so the cutoff
+# costs nothing in accuracy and bounds the per-bar work.
+SIGNAL_MAX_AGE = timedelta(days=7)
+
 
 def venue_client(venue: Venue, settings: Settings) -> KalshiClient | PolymarketClient:
     if venue is Venue.KALSHI:
