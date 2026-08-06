@@ -211,13 +211,24 @@ def score_posts(posts: Sequence[Post], model: StanceModel, target: str) -> list[
 # ---------------------------------------------------------------------------
 
 
-def _price_at(ticks: Sequence[PriceTick], at: datetime) -> float | None:
-    """Most recent price at or before `at`, within one bar."""
-    best: PriceTick | None = None
-    for tick in ticks:
-        if tick.ts <= at and (best is None or tick.ts > best.ts):
-            best = tick
-    if best is None or at - best.ts > timedelta(hours=1):
+def _price_at(
+    ticks: Sequence[PriceTick], times: Sequence[datetime], at: datetime
+) -> float | None:
+    """Most recent price at or before `at`, within one bar.
+
+    `ticks` must be sorted ascending by `ts`, with `times` its timestamps. The
+    linear scan this replaces ran once per grid bar over the whole price series,
+    making the signal build quadratic in history length — an 8,000-bar market
+    (about a year of hourly candles) did ~64M comparisons to produce a series
+    that is O(n log n) work.
+    """
+    if not ticks:
+        return None
+    index = bisect_right(times, at)
+    if index == 0:
+        return None
+    best = ticks[index - 1]
+    if at - best.ts > timedelta(hours=1):
         return None
     return best.mid
 
@@ -325,6 +336,18 @@ def build_signal_series(
 # ---------------------------------------------------------------------------
 
 
+def _book_snapshots(price_ticks: Sequence[PriceTick]) -> list[PriceTick]:
+    """Book snapshots, oldest first. Only these carry depth.
+
+    Candle rows carry bid/ask but no resting size, and `b` is calibrated from
+    size. Calibrating against a candle would silently fall back to the default
+    on every bar while looking like it had used real liquidity.
+    """
+    return sorted(
+        (t for t in price_ticks if t.source is PriceSource.BOOK), key=lambda t: t.ts
+    )
+
+
 def simulate_lmsr(
     signals: Sequence[SignalPoint],
     price_ticks: Sequence[PriceTick],
@@ -335,35 +358,64 @@ def simulate_lmsr(
 ) -> list[SimTick]:
     """Drive a synthetic LMSR market from the signal series.
 
-    `b` is re-calibrated at each step from the most recent book snapshot, so the
-    synthetic market's sensitivity tracks the real market's liquidity instead of
-    being a constant chosen to make the output look good.
+    `b` is re-calibrated at each step from the most recent book snapshot *at or
+    before* that step, so the synthetic market's sensitivity tracks the real
+    market's liquidity instead of being a constant chosen to make the output look
+    good. Recalibration deliberately holds the current price fixed: a liquidity
+    update is not new information about the outcome, and letting it move the
+    price would inject signal nobody traded on.
+
+    Two properties this depends on, both enforced here rather than assumed:
+
+    * **Only book rows are eligible.** Candles carry quotes but no depth.
+    * **No lookahead.** A step at time t sees only books at or before t. Using
+      the *latest* book for every step — which is what an earlier version did —
+      hands the whole simulation liquidity information from its own future.
+
+    When `poll_prices` has supplied just one snapshot (the common case today,
+    since history comes from candles), this degrades to a single constant `b`,
+    which is the honest behaviour: there is no depth series to track.
     """
     if not signals:
         return []
 
-    book = latest_book(price_ticks)
-    b = calibrate_b_from_depth(
-        book.depth_bid if book else None,
-        book.depth_ask if book else None,
-        book.yes_bid if book else None,
-        book.yes_ask if book else None,
-    )
+    books = _book_snapshots(price_ticks)
+    book_times = [b.ts for b in books]
+    fallback_book = books[-1] if books else None
 
-    market = LMSRMarket(b=b)
+    def calibrate(book: PriceTick | None) -> float:
+        return calibrate_b_from_depth(
+            book.depth_bid if book else None,
+            book.depth_ask if book else None,
+            book.yes_bid if book else None,
+            book.yes_ask if book else None,
+        )
+
+    ordered_signals = sorted(signals, key=lambda s: s.ts)
+
+    # Opening liquidity: the last book at or before the first signal point, or
+    # failing that the earliest book we have. A simulation that opened on the
+    # *final* snapshot's depth would be using the future to set its own inertia.
+    opening_book = _book_at(books, book_times, ordered_signals[0].ts) or (
+        books[0] if books else None
+    )
+    market = LMSRMarket(b=calibrate(opening_book))
+
     anchor = initial_price
     if anchor is None:
-        anchor = book.mid if book and book.mid is not None else 0.5
+        anchor = fallback_book.mid if fallback_book and fallback_book.mid is not None else 0.5
     market.move_to_price(anchor)
     # Anchoring is a setup move, not a trade the simulation should be charged for.
     market.realized_cost = 0.0
 
-    ordered_prices = sorted(price_ticks, key=lambda t: t.ts)
     ticks: list[SimTick] = []
 
-    for point in sorted(signals, key=lambda s: s.ts):
+    for point in ordered_signals:
+        book = _book_at(books, book_times, point.ts)
         if book is not None:
-            market.recalibrate(b)
+            new_b = calibrate(book)
+            if new_b != market.b:
+                market.recalibrate(new_b)
 
         target = point.p_hat if point.p_hat is not None else (point.s_t + 1.0) / 2.0
         shares, _ = market.step_from_signal(target, responsiveness=responsiveness)
@@ -383,8 +435,22 @@ def simulate_lmsr(
             )
         )
 
-    del ordered_prices
     return ticks
+
+
+def _book_at(
+    books: Sequence[PriceTick], times: Sequence[datetime], at: datetime
+) -> PriceTick | None:
+    """Most recent book snapshot at or before `at`, by binary search.
+
+    `books` must be sorted ascending by `ts` and `times` must be its timestamps,
+    hoisted out so the search stays O(log n) instead of rebuilding the key list
+    on every one of potentially thousands of bars.
+    """
+    if not books:
+        return None
+    index = bisect_right(times, at)
+    return books[index - 1] if index else None
 
 
 # ---------------------------------------------------------------------------
