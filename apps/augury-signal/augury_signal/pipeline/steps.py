@@ -9,6 +9,7 @@ why every step ends in an idempotent upsert rather than an append.
 from __future__ import annotations
 
 import logging
+from bisect import bisect_left, bisect_right
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -276,17 +277,21 @@ def build_signal_series(
     base_half_life = tracked.half_life_hours * 3600.0
     adaptive = tracked.adaptive
     ordered_prices = sorted(price_ticks, key=lambda t: t.ts)
+    price_times = [t.ts for t in ordered_prices]
 
     points: list[SignalPoint] = []
     cursor = start.replace(minute=0, second=0, microsecond=0) + step
 
     while cursor <= end:
         window_start = cursor - step
-        recent = sum(1 for t in post_times if window_start < t <= cursor)
+        # Both bounds by binary search on the sorted post times: counting with a
+        # generator scanned every post once per bar, which is quadratic in a
+        # window that can hold thousands of each.
+        recent = bisect_right(post_times, cursor) - bisect_right(post_times, window_start)
         baseline = baseline_hourly_rate(post_times, cursor, lookback_hours=24)
 
-        price_now = _price_at(ordered_prices, cursor)
-        price_prev = _price_at(ordered_prices, window_start)
+        price_now = _price_at(ordered_prices, price_times, cursor)
+        price_prev = _price_at(ordered_prices, price_times, window_start)
         move = 0.0 if price_now is None or price_prev is None else price_now - price_prev
 
         half_life = effective_half_life(
