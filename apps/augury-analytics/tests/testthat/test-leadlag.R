@@ -99,6 +99,85 @@ test_that("Granger refuses uninterpretably short history", {
   )
 })
 
+test_that("without controls the hand-rolled test reproduces lmtest::grangertest", {
+  # `granger_test` fits the two nested models itself so exogenous controls have
+  # somewhere to go. That is only safe if the uncontrolled path is *identical*
+  # to the library it replaced — otherwise every historical p-value silently
+  # shifted.
+  set.seed(21)
+  n <- 300
+  s <- numeric(n); p <- numeric(n)
+  for (t in 2:n) {
+    s[t] <- 0.5 * s[t - 1] + rnorm(1, sd = 0.3)
+    p[t] <- 0.4 * p[t - 1] + 0.35 * s[t - 1] + rnorm(1, sd = 0.2)
+  }
+  signal <- tanh(s)
+  price <- plogis(p)
+
+  ours <- granger_test(signal, price, direction = "signal_to_price")
+
+  frame <- data.frame(
+    signal = logit(signal_to_probability(signal)),
+    price = logit(price)
+  )
+  theirs <- lmtest::grangertest(price ~ signal, order = ours$lag_order, data = frame)
+
+  expect_equal(ours$f_statistic, theirs$F[2], tolerance = 1e-9)
+  expect_equal(ours$p_value, theirs$`Pr(>F)`[2], tolerance = 1e-9)
+  expect_false(ours$liquidity_control)
+})
+
+test_that("liquidity_control is only TRUE when controls actually entered the model", {
+  # This flag is written to `granger_results.liquidity_control` and read back as
+  # provenance. It used to be set from `!is.null(liquidity)` while the argument
+  # was accepted and then dropped on the floor — a run could claim to have
+  # controlled for liquidity having done nothing of the kind.
+  set.seed(23)
+  signal <- tanh(rnorm(200))
+  price <- plogis(rnorm(200))
+
+  bare <- granger_test(signal, price)
+  expect_false(bare$liquidity_control)
+  expect_length(bare$liquidity_terms, 0)
+
+  controlled <- granger_test(
+    signal, price,
+    liquidity = data.frame(spread = runif(200, 0.01, 0.1), depth_ask = runif(200, 10, 1000))
+  )
+  expect_true(controlled$liquidity_control)
+  expect_setequal(controlled$liquidity_terms, c("spread", "depth_ask"))
+})
+
+test_that("a spurious lead driven by liquidity is absorbed by the control", {
+  # The failure mode the control exists for: sentiment and price both respond to
+  # a thin book, so an uncontrolled test reads the shared driver as causality.
+  set.seed(29)
+  n <- 500
+  thinness <- as.numeric(stats::filter(rnorm(n), 0.85, method = "recursive"))
+  thinness[is.na(thinness)] <- 0
+
+  # Neither series causes the other; both load on `thinness`, price with a lag.
+  signal <- tanh(0.9 * thinness + rnorm(n, sd = 0.2))
+  price_latent <- 0.9 * c(0, utils::head(thinness, -1)) + rnorm(n, sd = 0.2)
+  price <- plogis(price_latent)
+
+  uncontrolled <- granger_test(signal, price)
+  controlled <- granger_test(signal, price, liquidity = data.frame(spread = thinness))
+
+  expect_lt(uncontrolled$p_value, 0.05)
+  expect_gt(controlled$p_value, uncontrolled$p_value)
+})
+
+test_that("misaligned liquidity controls are rejected, not recycled", {
+  # R recycles silently, which would pair each observation with an arbitrary
+  # control value and still produce a confident p-value.
+  expect_error(
+    granger_test(tanh(rnorm(100)), plogis(rnorm(100)),
+                 liquidity = data.frame(spread = runif(37))),
+    "aligned observation-for-observation"
+  )
+})
+
 test_that("an uncorrected result is never significant", {
   # `significant` must stay NA until the batch correction runs; defaulting it
   # to the raw p-value is exactly the multiple-comparisons error.
