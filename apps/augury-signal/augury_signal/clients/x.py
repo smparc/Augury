@@ -84,9 +84,17 @@ class FixtureXBackend:
         fixtures_dir: Path,
         *,
         anchor_to_now: bool = True,
+        anchor: datetime | None = None,
     ) -> None:
         self.fixtures_dir = Path(fixtures_dir)
         self.anchor_to_now = anchor_to_now
+        # Fixed once, at construction. Reading `now()` inside `search` made the
+        # shift depend on *when the call happened*, so the same fixture read
+        # twice from one backend came back with different timestamps —
+        # microseconds apart, but enough to break any join between two reads and
+        # enough to make "replayable" untrue. A replay source has to be a pure
+        # function of its inputs.
+        self._anchor = anchor if anchor is not None else datetime.now(UTC)
 
     @property
     def source_name(self) -> str:
@@ -141,7 +149,7 @@ class FixtureXBackend:
         offset = timedelta(0)
         if self.anchor_to_now:
             newest = max(created for created, _ in parsed)
-            offset = datetime.now(UTC) - newest
+            offset = self._anchor - newest
 
         posts: list[Post] = []
         for created, record in parsed:

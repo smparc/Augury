@@ -126,7 +126,7 @@ def stationarity(series: Sequence[float] | pd.Series, *, regression: str = "c") 
         raise ValueError(f"need at least 10 observations for an ADF test, got {len(clean)}")
     if not _has_variation(clean):
         raise ValueError(
-            "series carries no variation beyond floating-point residue; ADF is undefined"
+            "series is constant to within floating-point residue; ADF is undefined"
         )
 
     with warnings.catch_warnings():
