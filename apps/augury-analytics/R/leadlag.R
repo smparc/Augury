@@ -273,12 +273,41 @@ select_lag_order <- function(data, max_lags = 12, criterion = c("aic", "bic")) {
   if (is.na(order) || order < 1) 1L else order
 }
 
+#' Build a matrix of lags 1..p of `x`, named `<prefix>_lag<k>`.
+#'
+#' Rows 1..p are NA by construction; the caller drops them so the restricted and
+#' unrestricted models are fit on identical rows. Comparing two models fit on
+#' different row counts is not an F test of anything.
+lag_matrix <- function(x, p, prefix) {
+  stopifnot(p >= 1)
+  out <- vapply(seq_len(p), function(k) c(rep(NA_real_, k), utils::head(x, -k)), numeric(length(x)))
+  out <- matrix(out, nrow = length(x))
+  colnames(out) <- sprintf("%s_lag%d", prefix, seq_len(p))
+  out
+}
+
 #' Granger causality test in one direction.
+#'
+#' Fits the two nested regressions by hand rather than calling
+#' `lmtest::grangertest`, for one reason: exogenous controls. `grangertest` takes
+#' a two-variable formula and admits no third term, so with it there is nowhere
+#' to put liquidity. With `liquidity = NULL` this reduces to exactly what
+#' `grangertest` computes — same rows, same regressors, same F — and
+#' `test-leadlag.R` pins that equivalence.
 #'
 #' @param direction "signal_to_price" (does stance lead price?) or
 #'   "price_to_signal" — worth running, since a signal that merely *follows*
 #'   price is the null result this project should be able to report.
-#' @param liquidity optional data frame of exogenous controls (spread, depth)
+#' @param liquidity optional data frame or matrix of exogenous controls (spread,
+#'   depth), one row per observation, aligned with `signal` and `price`.
+#'
+#'   Why it matters: on a thin book a couple of small trades move the price a
+#'   long way, and thin books cluster in time — overnight, or right after a
+#'   news shock that also moves sentiment. Without controls, "sentiment leads
+#'   price" and "the book happened to be thin" are the same regression. The
+#'   controls enter *both* the restricted and the unrestricted model, so the F
+#'   test still isolates the lagged-signal block; what changes is that the block
+#'   no longer gets credit for variance liquidity already explains.
 granger_test <- function(signal, price, direction = c("signal_to_price", "price_to_signal"),
                          max_lags = 12, criterion = "aic", liquidity = NULL) {
   direction <- match.arg(direction)
@@ -288,7 +317,26 @@ granger_test <- function(signal, price, direction = c("signal_to_price", "price_
     signal = logit(signal_to_probability(signal)),
     price = logit(price)
   )
-  frame <- frame[stats::complete.cases(frame), , drop = FALSE]
+
+  controls <- NULL
+  if (!is.null(liquidity)) {
+    controls <- as.matrix(liquidity)
+    if (nrow(controls) != length(signal)) {
+      stop(sprintf(
+        "liquidity has %d rows but the series have %d; controls must be aligned observation-for-observation",
+        nrow(controls), length(signal)
+      ))
+    }
+    if (is.null(colnames(controls))) {
+      colnames(controls) <- sprintf("liq%d", seq_len(ncol(controls)))
+    }
+    # Namespace them so a control called `price` cannot collide with the series.
+    colnames(controls) <- paste0("ctrl_", colnames(controls))
+    frame <- cbind(frame, as.data.frame(controls))
+  }
+
+  keep <- stats::complete.cases(frame)
+  frame <- frame[keep, , drop = FALSE]
 
   if (nrow(frame) < 20) {
     stop(sprintf(
@@ -300,26 +348,63 @@ granger_test <- function(signal, price, direction = c("signal_to_price", "price_
   adf_signal <- test_stationarity(frame$signal)
   adf_price <- test_stationarity(frame$price)
 
-  lag_order <- select_lag_order(frame, max_lags = max_lags, criterion = criterion)
+  lag_order <- select_lag_order(frame[, c("signal", "price")], max_lags = max_lags,
+                                criterion = criterion)
 
-  formula <- if (direction == "signal_to_price") {
-    price ~ signal
+  if (direction == "signal_to_price") {
+    y <- frame$price
+    cause <- frame$signal
   } else {
-    signal ~ price
+    y <- frame$signal
+    cause <- frame$price
   }
 
-  test <- lmtest::grangertest(formula, order = lag_order, data = frame)
+  own <- lag_matrix(y, lag_order, "own")
+  other <- lag_matrix(cause, lag_order, "other")
+
+  design <- data.frame(y = y, own, other)
+  if (!is.null(controls)) {
+    # Contemporaneous, not lagged: the question is whether the *conditions the
+    # price formed under* explain the move, and those are observed at t.
+    design <- cbind(design, frame[, grep("^ctrl_", names(frame)), drop = FALSE])
+  }
+
+  # Drop the first `lag_order` rows once, so both models see identical data.
+  design <- design[stats::complete.cases(design), , drop = FALSE]
+
+  own_terms <- colnames(own)
+  other_terms <- colnames(other)
+  ctrl_terms <- setdiff(names(design), c("y", own_terms, other_terms))
+
+  rhs <- function(terms) if (length(terms)) paste(terms, collapse = " + ") else "1"
+
+  restricted <- stats::lm(
+    stats::as.formula(paste("y ~", rhs(c(own_terms, ctrl_terms)))),
+    data = design
+  )
+  unrestricted <- stats::lm(
+    stats::as.formula(paste("y ~", rhs(c(own_terms, other_terms, ctrl_terms)))),
+    data = design
+  )
+
+  comparison <- stats::anova(restricted, unrestricted)
 
   list(
     direction = direction,
     lag_order = lag_order,
     lag_criterion = criterion,
     n_obs = nrow(frame),
-    f_statistic = test$F[2],
-    p_value = test$`Pr(>F)`[2],
+    n_fitted = nrow(design),
+    f_statistic = comparison$F[2],
+    p_value = comparison$`Pr(>F)`[2],
     adf_p_signal = adf_signal$p_value,
     adf_p_price = adf_price$p_value,
-    liquidity_control = !is.null(liquidity),
+    # True only when controls were actually placed in both models. This used to
+    # be set from `!is.null(liquidity)` while `liquidity` was accepted and then
+    # ignored, so a run could record in the database that it had controlled for
+    # liquidity when it had done no such thing.
+    liquidity_control = length(ctrl_terms) > 0,
+    liquidity_terms = if (length(ctrl_terms)) sub("^ctrl_", "", ctrl_terms) else character(0),
     # Deliberately absent until the batch correction runs. A single test in
     # isolation has no adjusted p-value, and defaulting it to the raw one is
     # precisely the error being guarded against.
@@ -347,20 +432,52 @@ apply_fdr_correction <- function(results, alpha = 0.05) {
   }, results, adjusted)
 }
 
+#' Columns treated as liquidity controls when present in a market's frame.
+#'
+#' Kept as a named constant rather than inlined so the analytics report, the
+#' database writer, and this module cannot disagree about what "controlled for
+#' liquidity" means.
+LIQUIDITY_COLUMNS <- c("spread", "depth_bid", "depth_ask")
+
 #' Run the full lead-lag analysis for several markets and correct across them.
 #'
-#' @param market_data named list of data frames, each with `signal` and `price`
-analyze_markets <- function(market_data, max_lags = 12, criterion = "aic", alpha = 0.05) {
+#' @param market_data named list of data frames, each with `signal` and `price`,
+#'   and optionally any of `LIQUIDITY_COLUMNS`
+#' @param liquidity_controls whether to use those columns when they are present.
+#'   Set FALSE to reproduce an uncontrolled run for comparison — the difference
+#'   between the two is itself informative: a finding that survives controls is
+#'   worth much more than one that does not.
+analyze_markets <- function(market_data, max_lags = 12, criterion = "aic", alpha = 0.05,
+                            liquidity_controls = TRUE) {
   results <- list()
 
   for (market_id in names(market_data)) {
     data <- market_data[[market_id]]
 
+    liquidity <- NULL
+    if (liquidity_controls) {
+      available <- intersect(LIQUIDITY_COLUMNS, names(data))
+      # A control that is constant across the window explains nothing and makes
+      # the design matrix rank-deficient, so drop it rather than fail the fit.
+      available <- available[vapply(
+        available,
+        function(col) {
+          values <- data[[col]][is.finite(data[[col]])]
+          length(values) > 0 && diff(range(values)) > 0
+        },
+        logical(1)
+      )]
+      if (length(available)) {
+        liquidity <- data[, available, drop = FALSE]
+      }
+    }
+
     outcome <- tryCatch(
       {
         test <- granger_test(data$signal, data$price,
                              direction = "signal_to_price",
-                             max_lags = max_lags, criterion = criterion)
+                             max_lags = max_lags, criterion = criterion,
+                             liquidity = liquidity)
         test$market_id <- market_id
         test
       },
