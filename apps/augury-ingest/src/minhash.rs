@@ -21,7 +21,7 @@
 //! `1 - (1 - s^rows)^bands` — a sigmoid in `s` whose steep region is tuned by
 //! the band/row split.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 
 /// Mersenne prime (2^61 - 1). Modulus for the universal hash family; large
 /// enough that collisions between distinct shingles are negligible and small
@@ -38,13 +38,42 @@ pub const SHINGLE_SIZE: usize = 3;
 /// 0.9-similar reword from a 0.3-similar coincidence.
 pub const DEFAULT_NUM_HASHES: usize = 128;
 
-/// LSH band count. With 128 hashes this gives 16 rows per band, so the
-/// collision probability crosses 50% around Jaccard 0.80 — near-duplicates get
-/// compared, genuinely different posts almost never do.
-pub const DEFAULT_NUM_BANDS: usize = 8;
+/// LSH band count. With 128 hashes this gives 8 rows per band.
+///
+/// The band split is chosen against the *asymmetry of the two error types*, not
+/// to centre the S-curve on the threshold. LSH here is only a pre-filter: every
+/// candidate it surfaces is then compared exactly against
+/// `DEFAULT_DUPLICATE_THRESHOLD`, so a banding false positive costs one integer
+/// comparison, while a banding false negative is a duplicate that silently
+/// counts as an independent opinion in `S(t)`. The steep region therefore
+/// belongs to the *left* of the threshold.
+///
+/// With `r` rows and `bnd` bands, a pair of Jaccard `s` is retrieved with
+/// probability `1 - (1 - s^r)^bnd`. At the 0.80 threshold:
+///
+/// | split            | 50% crossover | retrieval @ 0.80 |
+/// |------------------|---------------|------------------|
+/// | 8 bands × 16 rows | s ≈ 0.856    | **20.4%**        |
+/// | 16 bands × 8 rows | s ≈ 0.674    | **94.7%**        |
+///
+/// The 8×16 split — which the earlier comment described as crossing 50% "around
+/// 0.80" — in fact retrieved only one true near-duplicate pair in five. Four out
+/// of five spam-ring members were never even compared.
+pub const DEFAULT_NUM_BANDS: usize = 16;
 
 /// Similarity at or above which two posts are considered the same claim.
 pub const DEFAULT_DUPLICATE_THRESHOLD: f64 = 0.80;
+
+/// Probability that a pair of Jaccard similarity `s` collides in at least one
+/// band: `1 - (1 - s^rows)^bands`.
+///
+/// Exposed so the banding can be asserted rather than reasoned about in a
+/// comment — the previous split was mis-described for exactly that reason.
+#[must_use]
+pub fn lsh_retrieval_probability(s: f64, rows: usize, bands: usize) -> f64 {
+    debug_assert!((0.0..=1.0).contains(&s), "similarity must be in [0, 1]");
+    1.0 - (1.0 - s.powi(rows as i32)).powi(bands as i32)
+}
 
 /// A 64-bit FNV-1a hash. Deterministic across runs and platforms, which matters
 /// because signatures are persisted to the database and compared later.
@@ -215,6 +244,13 @@ impl MinHasher {
     }
 
     /// LSH bucket keys, one per band.
+    ///
+    /// Each key carries its own row width (`r8:3:…`). Bucket keys are persisted
+    /// to `posts.lsh_bucket`, and a key computed under one band split is
+    /// meaningless under another — without the prefix, re-tuning the banding
+    /// would make historical buckets collide with new ones at random. The prefix
+    /// makes stored keys self-describing, so re-tuning needs no data migration:
+    /// old rows simply never match new ones, which is the truth.
     pub fn buckets(&self, signature: &[i64]) -> Vec<String> {
         let rows = self.rows_per_band();
         signature
@@ -226,7 +262,7 @@ impl MinHasher {
                 for value in band {
                     bytes.extend_from_slice(&value.to_le_bytes());
                 }
-                format!("{band_index}:{:016x}", fnv1a(&bytes))
+                format!("r{rows}:{band_index}:{:016x}", fnv1a(&bytes))
             })
             .collect()
     }
@@ -256,6 +292,10 @@ struct Seen {
     post_id: String,
     signature: Vec<i64>,
     buckets: Vec<String>,
+    /// Monotonic arrival number. Because the window is a contiguous FIFO, a
+    /// post's slot is `seq - front_seq`, which is what lets the inverted index
+    /// store bare integers instead of borrowed references.
+    seq: u64,
 }
 
 /// The verdict for a candidate post.
@@ -275,12 +315,25 @@ pub enum DuplicateCheck {
 /// ingest run, and comparing against months-old posts is not useful anyway:
 /// the same phrasing recurring next week is a separate event, not a duplicate.
 /// The window is what makes this a *streaming* filter.
+///
+/// The point of LSH is to make each check cost O(candidates) rather than
+/// O(window). That requires an actual inverted index — bucket key to the posts
+/// occupying it. Walking the whole window and merely *skipping* the similarity
+/// computation on a bucket miss is still O(window · bands²) per post, which at
+/// the shipped capacity of 4096 and 16 bands is about a million string
+/// comparisons for every post ingested. `index` is what makes the cost match
+/// the claim.
 #[derive(Debug)]
 pub struct DuplicateDetector {
     hasher: MinHasher,
     threshold: f64,
     capacity: usize,
     window: VecDeque<Seen>,
+    /// bucket key -> arrival numbers of the posts in that bucket.
+    index: HashMap<String, Vec<u64>>,
+    /// Arrival number of `window.front()`; `next_seq - window.len()`.
+    front_seq: u64,
+    next_seq: u64,
 }
 
 impl DuplicateDetector {
@@ -295,6 +348,9 @@ impl DuplicateDetector {
             threshold,
             capacity,
             window: VecDeque::with_capacity(capacity),
+            index: HashMap::new(),
+            front_seq: 0,
+            next_seq: 0,
         }
     }
 
@@ -330,13 +386,25 @@ impl DuplicateDetector {
 
         let buckets = self.hasher.buckets(&signature);
 
-        // Only posts sharing at least one band bucket are compared, which is
-        // what keeps this linear in practice rather than quadratic.
-        let mut best: Option<(&Seen, f64)> = None;
-        for seen in &self.window {
-            if !seen.buckets.iter().any(|b| buckets.contains(b)) {
-                continue;
+        // Only posts sharing at least one band bucket are retrieved. A post
+        // colliding in several bands appears once per band, so candidates are
+        // deduplicated before the (comparatively expensive) signature compare.
+        let mut candidates: Vec<u64> = Vec::new();
+        for bucket in &buckets {
+            if let Some(seqs) = self.index.get(bucket) {
+                candidates.extend_from_slice(seqs);
             }
+        }
+        candidates.sort_unstable();
+        candidates.dedup();
+
+        let mut best: Option<(&Seen, f64)> = None;
+        for seq in candidates {
+            // Candidates are only ever inserted for live window entries and are
+            // removed on eviction, so this index is always in range.
+            let Some(seen) = self.window.get((seq - self.front_seq) as usize) else {
+                continue;
+            };
             let score = similarity(&signature, &seen.signature);
             if score >= self.threshold && best.map_or(true, |(_, current)| score > current) {
                 best = Some((seen, score));
@@ -355,15 +423,48 @@ impl DuplicateDetector {
         // have every one of them match against the whole cluster, not just the
         // first member.
         if self.window.len() == self.capacity {
-            self.window.pop_front();
+            self.evict_front();
+        }
+
+        let seq = self.next_seq;
+        self.next_seq += 1;
+        for bucket in &buckets {
+            self.index.entry(bucket.clone()).or_default().push(seq);
         }
         self.window.push_back(Seen {
             post_id: post_id.to_string(),
             signature: signature.clone(),
             buckets,
+            seq,
         });
 
         (verdict, Some(signature))
+    }
+
+    /// Drop the oldest entry and unlink it from every bucket it occupied.
+    ///
+    /// Without the unlink the index would grow without bound over a long ingest
+    /// run — the same unbounded-growth failure the window itself exists to
+    /// prevent, just moved one level down.
+    fn evict_front(&mut self) {
+        let Some(evicted) = self.window.pop_front() else {
+            return;
+        };
+        self.front_seq = self.window.front().map_or(self.next_seq, |s| s.seq);
+        for bucket in &evicted.buckets {
+            if let Some(seqs) = self.index.get_mut(bucket) {
+                seqs.retain(|s| *s != evicted.seq);
+                if seqs.is_empty() {
+                    self.index.remove(bucket);
+                }
+            }
+        }
+    }
+
+    /// Number of distinct LSH buckets currently occupied. Exposed so the index's
+    /// boundedness can be asserted by the test suite rather than assumed.
+    pub fn index_size(&self) -> usize {
+        self.index.len()
     }
 }
 
@@ -522,6 +623,87 @@ mod tests {
             detector.check(&format!("p{i}"), &format!("unique post number {i} about markets"));
         }
         assert_eq!(detector.len(), 4);
+    }
+
+    #[test]
+    fn the_lsh_index_is_bounded_too() {
+        // A window bounded at N entries but an index that never forgets is the
+        // same unbounded-growth bug one level down. Each post occupies at most
+        // one bucket per band, so the index can never exceed capacity * bands.
+        let mut detector = DuplicateDetector::new(MinHasher::default(), 0.8, 4);
+        for i in 0..500 {
+            detector.check(&format!("p{i}"), &format!("unique post number {i} about markets"));
+        }
+        assert_eq!(detector.len(), 4);
+        assert!(
+            detector.index_size() <= 4 * DEFAULT_NUM_BANDS,
+            "index held {} buckets for a 4-entry window",
+            detector.index_size()
+        );
+    }
+
+    #[test]
+    fn eviction_survives_a_wraparound_of_the_window() {
+        // The inverted index addresses window slots as `seq - front_seq`. If
+        // eviction did not maintain front_seq, this would panic or silently
+        // compare against the wrong entry.
+        let mut detector = DuplicateDetector::new(MinHasher::default(), 0.8, 3);
+        for i in 0..50 {
+            detector.check(&format!("p{i}"), &format!("post number {i} discussing rate policy"));
+        }
+        // The most recent post must still be recognised as its own duplicate.
+        let (verdict, _) = detector.check("dup", "post number 49 discussing rate policy");
+        assert!(
+            matches!(verdict, DuplicateCheck::Duplicate { .. }),
+            "recent entry was lost from the index after eviction"
+        );
+    }
+
+    #[test]
+    fn banding_retrieves_the_overwhelming_majority_at_the_threshold() {
+        // The band split is the one parameter here that can be wrong without
+        // anything failing: a mistuned split silently lets near-duplicates
+        // through, and they then count as independent opinions in S(t).
+        //
+        // The previous 8-band split retrieved only 20.4% of true duplicate
+        // pairs at the 0.80 threshold. Pin the property, not the constant.
+        let rows = DEFAULT_NUM_HASHES / DEFAULT_NUM_BANDS;
+        let at_threshold =
+            lsh_retrieval_probability(DEFAULT_DUPLICATE_THRESHOLD, rows, DEFAULT_NUM_BANDS);
+        assert!(
+            at_threshold > 0.90,
+            "banding retrieves only {:.1}% of pairs at the duplicate threshold; \
+             a false negative is a duplicate counted as an independent opinion",
+            at_threshold * 100.0
+        );
+
+        // And it must still discriminate: a 0.3-similar coincidence should
+        // almost never even be compared, or LSH is buying nothing.
+        let at_noise = lsh_retrieval_probability(0.30, rows, DEFAULT_NUM_BANDS);
+        assert!(
+            at_noise < 0.05,
+            "banding retrieves {:.1}% of unrelated pairs; the pre-filter is not filtering",
+            at_noise * 100.0
+        );
+    }
+
+    #[test]
+    fn bucket_keys_record_their_own_row_width() {
+        // Buckets are persisted. A key computed under one band split must never
+        // be mistaken for a key computed under another.
+        let eight = MinHasher::new(128, 16);
+        let sixteen = MinHasher::new(128, 8);
+        let text = "the committee will hold rates steady at this meeting";
+
+        let a = eight.buckets(&eight.signature(text).unwrap());
+        let b = sixteen.buckets(&sixteen.signature(text).unwrap());
+
+        assert!(a[0].starts_with("r8:"), "got {}", a[0]);
+        assert!(b[0].starts_with("r16:"), "got {}", b[0]);
+        assert!(
+            a.iter().all(|k| !b.contains(k)),
+            "bucket keys collided across band splits"
+        );
     }
 
     #[test]
