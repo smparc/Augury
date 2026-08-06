@@ -98,6 +98,44 @@ class TestCrossCorrelation:
         with pytest.raises(ValueError, match="differ in length"):
             cross_correlation([1.0, 2.0], [1.0], max_lag=1)
 
+    def test_a_price_pinned_to_one_tick_yields_no_correlation(self):
+        """The exact failure observed on KXFEDDECISION-26SEP-C25.
+
+        A market pinned deep out-of-the-money held two "distinct" prices in a
+        window: 0.015, and 0.015000000000000001 — the second arising because the
+        YES ask is derived as `1 - 0.98`, and 0.02 is not representable in
+        binary64. Six ULPs apart. `nunique() > 1` waved that through and the
+        cross-correlation reported a smooth gradient reaching -0.398 at lag +6h,
+        labelled "signal leads", computed entirely from rounding residue.
+        """
+        rng = np.random.default_rng(3)
+        signal = rng.normal(size=60)
+        price = [0.015 if i % 2 else 1.0 - 0.985 for i in range(60)]
+
+        # Precondition: the two values really are distinct floats.
+        assert len(set(price)) == 2
+        assert 0 < max(price) - min(price) < 1e-15
+
+        table = cross_correlation(signal, price, max_lag=6)
+        assert table["correlation"].isna().all(), (
+            "a price constant to within floating-point residue produced a "
+            f"correlation of {table['correlation'].abs().max()}"
+        )
+
+    def test_a_genuine_one_tick_move_is_still_measured(self):
+        """The noise floor must not swallow a real move.
+
+        Prediction markets quote in cents, so one tick is 0.01 — ten million
+        times the threshold. Guarding against ULP residue must not turn into
+        guarding against thin markets.
+        """
+        rng = np.random.default_rng(5)
+        signal = rng.normal(size=60)
+        price = [0.02 + 0.01 * (i % 2) for i in range(60)]
+
+        table = cross_correlation(signal, price, max_lag=6)
+        assert table["correlation"].notna().any()
+
 
 class TestGranger:
     def _leading_series(self, n=400, seed=11):

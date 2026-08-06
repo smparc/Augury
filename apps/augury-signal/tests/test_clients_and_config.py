@@ -128,6 +128,33 @@ class TestFixtureBackend:
         """With no fixtures at all there is nothing to replay — and no error."""
         assert FixtureXBackend(tmp_path / "absent").search("q", "kalshi:ANY") == []
 
+    def test_repeated_reads_replay_identically(self):
+        """A replay source must be a pure function of its inputs.
+
+        The anchor offset used to be computed from `now()` inside `search`, so
+        two reads from one backend came back shifted relative to each other by
+        however long elapsed between the calls. Small — hundreds of microseconds
+        — but it makes any join between two fixture reads silently mis-align,
+        and it means the same fixture never replays the same way twice.
+        """
+        backend = FixtureXBackend(self.fixtures_dir)
+        first = backend.search("q", "kalshi:KXFEDDECISION-26JUL-C25")
+        second = backend.search("q", "kalshi:KXFEDDECISION-26JUL-C25")
+
+        assert [p.created_at for p in first] == [p.created_at for p in second]
+        assert [p.post_id for p in first] == [p.post_id for p in second]
+
+    def test_a_truncated_read_is_a_prefix_of_the_full_one(self):
+        """`max_results=n` must return exactly the n newest of the full read."""
+        backend = FixtureXBackend(self.fixtures_dir)
+        head = backend.search("q", "kalshi:KXFEDDECISION-26JUL-C25", max_results=5)
+        everything = backend.search("q", "kalshi:KXFEDDECISION-26JUL-C25")
+
+        assert [p.post_id for p in head] == [p.post_id for p in everything[:5]]
+        assert min(p.created_at for p in head) >= sorted(
+            p.created_at for p in everything
+        )[-5]
+
     def test_max_results_returns_the_newest(self):
         backend = FixtureXBackend(self.fixtures_dir)
         posts = backend.search("q", "kalshi:KXFEDDECISION-26JUL-C25", max_results=5)
