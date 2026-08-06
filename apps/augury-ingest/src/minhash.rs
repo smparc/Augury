@@ -400,9 +400,15 @@ impl DuplicateDetector {
 
         let mut best: Option<(&Seen, f64)> = None;
         for seq in candidates {
-            // Candidates are only ever inserted for live window entries and are
-            // removed on eviction, so this index is always in range.
-            let Some(seen) = self.window.get((seq - self.front_seq) as usize) else {
+            // Candidates are only inserted for live window entries and removed
+            // on eviction, so this is always in range. `checked_sub` rather than
+            // `-` anyway: an unsigned underflow here would panic in debug and
+            // silently index the wrong post in release, which would report a
+            // duplicate against an unrelated post id.
+            let Some(slot) = seq.checked_sub(self.front_seq) else {
+                continue;
+            };
+            let Some(seen) = self.window.get(slot as usize) else {
                 continue;
             };
             let score = similarity(&signature, &seen.signature);
