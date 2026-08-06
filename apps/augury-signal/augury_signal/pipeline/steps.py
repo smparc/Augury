@@ -269,7 +269,12 @@ def build_signal_series(
     if not contributions:
         return []
 
-    post_times = sorted(c.created_at for c in contributions)
+    # Sorted once so every per-bar lookup below is a binary search rather than a
+    # scan. `compute_signal` discards anything outside [cursor - MAX_AGE, cursor]
+    # anyway, so handing it the whole corpus on every bar was doing the same
+    # filtering work O(bars) times.
+    contributions.sort(key=lambda c: c.created_at)
+    post_times = [c.created_at for c in contributions]
     start = post_times[0]
     end = max(post_times[-1], datetime.now(UTC))
 
@@ -288,7 +293,7 @@ def build_signal_series(
         # generator scanned every post once per bar, which is quadratic in a
         # window that can hold thousands of each.
         recent = bisect_right(post_times, cursor) - bisect_right(post_times, window_start)
-        baseline = baseline_hourly_rate(post_times, cursor, lookback_hours=24)
+        baseline = baseline_hourly_rate(post_times, cursor, lookback_hours=24, sorted_input=True)
 
         price_now = _price_at(ordered_prices, price_times, cursor)
         price_prev = _price_at(ordered_prices, price_times, window_start)
@@ -305,13 +310,17 @@ def build_signal_series(
             enabled=adaptive.enabled,
         )
 
+        # Slice to exactly the posts `compute_signal` would keep. The bounds are
+        # the same ones it applies internally, so this changes cost, not results.
+        lo = bisect_left(post_times, cursor - SIGNAL_MAX_AGE)
+        hi = bisect_right(post_times, cursor)
         point = compute_signal(
-            contributions,
+            contributions[lo:hi],
             cursor,
             half_life,
             market_id=tracked.market.market_id,
             model_version=model_version,
-            max_age=timedelta(days=7),
+            max_age=SIGNAL_MAX_AGE,
         )
 
         if point is not None:

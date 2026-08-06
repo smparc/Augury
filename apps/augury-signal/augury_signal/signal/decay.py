@@ -19,6 +19,7 @@ dominant term exp(0) = 1 and the ratio well-defined regardless of scale.
 from __future__ import annotations
 
 import math
+from bisect import bisect_left, bisect_right
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -222,21 +223,36 @@ def effective_half_life(
     return max(min_half_life_seconds, base_half_life_seconds / factor)
 
 
-def baseline_hourly_rate(post_times: Sequence[datetime], at: datetime, lookback_hours: int = 24) -> float:
+def baseline_hourly_rate(
+    post_times: Sequence[datetime],
+    at: datetime,
+    lookback_hours: int = 24,
+    *,
+    sorted_input: bool = False,
+) -> float:
     """Median posts-per-hour over the trailing window, used as the surge baseline.
 
     Median rather than mean: one viral hour would otherwise raise the baseline
     enough to mask the next surge, which is precisely when the shortened
     half-life is wanted.
+
+    Pass `sorted_input=True` when `post_times` is already ascending — the caller
+    in `build_signal_series` evaluates this once per grid bar, and scanning every
+    post each time makes building a signal series quadratic in the post count.
+    With the input sorted, only the trailing window is touched.
     """
     if lookback_hours <= 0:
         raise ValueError("lookback_hours must be positive")
 
     start = at - timedelta(hours=lookback_hours)
     buckets = [0] * lookback_hours
-    for t in post_times:
-        if not (start <= t <= at):
-            continue
+
+    if sorted_input:
+        window = post_times[bisect_left(post_times, start) : bisect_right(post_times, at)]
+    else:
+        window = [t for t in post_times if start <= t <= at]
+
+    for t in window:
         index = int((t - start).total_seconds() // 3600)
         # A post exactly at `at` lands one past the last bucket.
         buckets[min(index, lookback_hours - 1)] += 1
